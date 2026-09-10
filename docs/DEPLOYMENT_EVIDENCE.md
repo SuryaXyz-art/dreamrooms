@@ -1,28 +1,27 @@
 # Deployment evidence
 
-Status: BLOCKED — no deployment was attempted.
+Status: PARTIAL — public route and live-read smoke checks completed; wallet, room persistence and transaction evidence remain unverified.
 
-Date: 2026-09-07
+Date: 2026-09-11
 
 ## Target audit
 
 - Application: Next.js App Router, compatible with Vercel's standard Next.js runtime.
 - Deployment metadata: no `.vercel/project.json`, `vercel.json`, `.openai/hosting.json` or equivalent target configuration exists.
-- Public URL: none configured.
-- Authentication: no Vercel CLI/session or deployment credentials available in the workspace.
+- Public URL: https://dreamrooms.vercel.app/
+- Authentication: deployment ownership/session was not inspected; this document records only public verification.
 - Production environment: `.env.example` contains names only; no production values were inspected or printed.
 
 ## Local evidence
 
 - `npm run build` — PASS.
 - Routes generated: `/`, `/rooms/new`, `/rooms/[roomId]`, `/portfolio`, `/status`, `/icon.svg`.
-- No public smoke checks, clean-browser checks, production RPC check, cross-session room check or production wallet transaction were possible without a deployed URL.
+- Public route and clean-browser checks are recorded in `docs/PUBLIC_SMOKE_TEST.md`.
+- Cross-session room check, Supabase persistence and production wallet transaction were not run.
 - No transaction hash is recorded because no wallet signature was requested or executed.
 
-## Required deployment handoff
+## Remaining release evidence
 
-1. The user creates or selects the authorized Vercel project and authenticates the Vercel CLI, or provides an already authenticated deployment session.
-2. The user enters production variables from `.env.example` into the deployment secret store. Keep service credentials server-only; do not paste them into chat or source.
-3. Deploy from the intended public repository/worktree and provide the resulting HTTPS URL.
-4. Retest every route from a clean browser session, then perform the manual Shannon wallet gate from `docs/TESTNET_RUNBOOK.md`.
-5. Record the deployment URL, UTC timestamp, route results, live-read result and verified transaction evidence here.
+1. Verify the authorized Vercel project and production environment values in the Vercel dashboard without exposing secrets.
+2. Restore Supabase DNS/reachability and run the two-session room flow.
+3. Perform the manual Shannon wallet gate from `docs/TESTNET_RUNBOOK.md` and record only a mined, successful receipt plus position readback.

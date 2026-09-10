@@ -10,4 +10,4 @@
 - Most pre-existing server-rendered page copy remains outside the locale catalog; shared client surfaces,
   navigation, project education and the room centerpiece have English/Hindi coverage.
 - Speech synthesis depends on browser support and is optional. Trading and navigation do not depend on it.
-- The current app has no public deployment URL or deployment configuration in this workspace.
+- The public deployment URL is available, but production Supabase room persistence, two-session sharing and a wallet-signed production transaction remain unverified.

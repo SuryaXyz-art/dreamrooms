@@ -444,3 +444,12 @@ request was completed by this run.
   remains DNS-unreachable in the native Node runtime.
 - Real wallet-signed DreamDEX order, receipt, position, claim and production deployment: NOT RUN;
   each requires the owner's manual wallet/deployment action.
+
+# 2026-09-11 public verification update
+
+- Public URL `https://dreamrooms.vercel.app/` — PASS: landing, create-room, portfolio and status routes loaded from a clean browser tab.
+- Public status page — PASS: Shannon chain ID 50312, SDK/indexer, dynamic venue discovery and live BTC/ETH checks reported ready.
+- Public safe-error checks — PASS: invalid room route/API and malformed portfolio input returned safe 404/400 responses; room list API returned safe 503 while Supabase transport remains unresolved.
+- Public wallet-signed trade, room persistence, two-session sharing, realtime and claim — NOT RUN/NOT VERIFIED; no signatures or fabricated evidence were used.
+- `src/lib/dreamdex/live-provider.ts` now excludes rows outside the current market window from the actionable live discovery list and health-ready count.
+- Notion project brief created and verified: `DreamRooms — Project Verification Brief`.

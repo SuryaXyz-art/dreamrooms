@@ -18,6 +18,7 @@ import {
   createShannonPublicClient,
   getDreamDexRuntimeConfig,
 } from "@/lib/dreamdex/config";
+import { getMarketWindowState } from "@/lib/dreamdex/market-gates";
 import { withRetry } from "@/lib/dreamdex/reliability";
 import type {
   MarketDiscovery,
@@ -137,12 +138,13 @@ class LiveMarketProvider implements MarketProvider {
         ...new Map(indexedMarkets.map((market) => [market.marketId, market])).values(),
       ];
       const reads = await Promise.all(uniqueMarkets.map((market) => readMarket(exchange, market)));
+      const activeReads = reads.filter(({ market }) => getMarketWindowState(market) === "TRADING");
       const orderBooks = Object.fromEntries(
-        reads.map(({ market, orderBook }) => [market.id, orderBook]),
+        activeReads.map(({ market, orderBook }) => [market.id, orderBook]),
       );
-      const source = discoverySource(reads);
+      const source = discoverySource(activeReads);
       return {
-        markets: reads.map(({ market }) => market),
+        markets: activeReads.map(({ market }) => market),
         orderBooks,
         source,
         message:
@@ -150,7 +152,9 @@ class LiveMarketProvider implements MarketProvider {
             ? reads.length
               ? "Live market and on-chain order-book reads verified on Somnia Shannon."
               : "Live DreamDEX discovery returned no active BTC/ETH markets."
-            : "Some indexed markets could not be verified from chain head; trading remains disabled for them.",
+            : activeReads.length
+              ? "Some indexed markets could not be verified from chain head; trading remains disabled for them."
+              : "No active BTC/ETH markets are inside a currently open trading window.",
         lastUpdatedAt: nowIso(),
       };
     } catch {
@@ -282,13 +286,21 @@ class LiveMarketProvider implements MarketProvider {
       let liveReady = false;
       if (liveRows.length && rpcReady) {
         try {
-          const first = liveRows[0];
-          if (!first) throw new Error("No live market row");
-          const onchain = await withRetry(
-            () => exchange.client.getMarketOnchain(first.marketId),
-            readOptions("live market status health"),
-          );
-          liveReady = onchain.status >= 0 && onchain.status <= 5;
+          for (const candidate of liveRows) {
+            const onchain = await withRetry(
+              () => exchange.client.getMarketOnchain(candidate.marketId),
+              readOptions("live market status health"),
+            );
+            const normalized = toDreamDexMarket(candidate, onchain, "LIVE");
+            if (
+              onchain.status >= 0 &&
+              onchain.status <= 5 &&
+              getMarketWindowState(normalized) === "TRADING"
+            ) {
+              liveReady = true;
+              break;
+            }
+          }
         } catch {
           liveReady = false;
         }

@@ -4,7 +4,7 @@ DreamRooms turns live DreamDEX BTC/ETH Event Contracts into shareable prediction
 
 ## Status
 
-This is a local release candidate, not a completed public hackathon submission. The workspace contains the polished Next.js shell, live read-only DreamDEX integration, Shannon wallet-signed BUY UP/BUY DOWN flow, and Supabase-backed room/social implementation. Public deployment, remote Supabase verification and a recorded real wallet transaction remain external evidence gates.
+The public release is available at [dreamrooms.vercel.app](https://dreamrooms.vercel.app/). Live DreamDEX read-only discovery and the production shell were verified from a clean browser session. A real wallet-signed order, Supabase room persistence, two-session sharing and recorded demo media remain explicit evidence gates; they are not claimed here without independently verified proof.
 
 ## Why it matters
 
@@ -43,10 +43,9 @@ Primary references: [DreamDEX Event Contracts docs](https://docs.dreamdex.io/dev
 
 ## Screenshots and demo media
 
-The current repository intentionally does not embed fabricated media. A real local browser capture was
-reviewed during release-candidate work, but the available browser capture surface did not export a stable
-PNG into this repository. Add only captures made from the executable app and caption local versus public
-data clearly.
+The public landing page and create-room experience were reviewed from the deployed URL. This repository
+does not embed fabricated media: stable PNG/GIF exports still need to be supplied from a real browser
+session and captioned as live data or demo fixtures. See the [public smoke evidence](docs/PUBLIC_SMOKE_TEST.md).
 
 ## Run locally
 
@@ -85,14 +84,13 @@ npm test -- src/lib/dreamdex/integration.smoke.test.ts --reporter=verbose
 
 ## Evidence and limitations
 
-See [deployment preparation](docs/DEPLOYMENT.md), [deployment evidence](docs/DEPLOYMENT_EVIDENCE.md), [known limitations](docs/KNOWN_LIMITATIONS.md), [release checklist](docs/RELEASE_CHECKLIST.md), [winning audit](docs/WINNING_AUDIT.md) and [testnet runbook](docs/TESTNET_RUNBOOK.md). No public application URL or transaction hash is claimed in this repository yet.
+See [deployment preparation](docs/DEPLOYMENT.md), [deployment evidence](docs/DEPLOYMENT_EVIDENCE.md), [public smoke evidence](docs/PUBLIC_SMOKE_TEST.md), [known limitations](docs/KNOWN_LIMITATIONS.md), [release checklist](docs/RELEASE_CHECKLIST.md), [winning audit](docs/WINNING_AUDIT.md) and [testnet runbook](docs/TESTNET_RUNBOOK.md). No transaction hash is claimed in this repository.
 
 ## Roadmap
 
 1. Restore Supabase reachability and complete the two-session room-sharing evidence run.
 2. Complete one low-value Shannon testnet trade and claim with user-reviewed wallet signatures.
-3. Deploy to an authorized Vercel project and record clean-browser evidence.
-4. Supply real screenshots/video and complete the DoraHacks form manually.
+3. Supply real screenshots/video and complete the DoraHacks form manually.
 
 ## License
 
