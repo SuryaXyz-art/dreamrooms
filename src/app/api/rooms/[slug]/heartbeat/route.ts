@@ -3,8 +3,8 @@ import { errorResponse, requireWallet } from "@/lib/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { roomSlugSchema } from "@/lib/supabase/schema";
 
-export async function POST(_: Request, { params }: { params: Promise<{ slug: string }> }) {
-  const wallet = await requireWallet();
+export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const wallet = await requireWallet(request);
   if (wallet instanceof NextResponse) return wallet;
   try {
     const slug = roomSlugSchema.parse((await params).slug);

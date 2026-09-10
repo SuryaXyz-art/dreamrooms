@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount, useSignMessage } from "wagmi";
+import { useAccount, useChainId, useSignMessage, useSwitchChain } from "wagmi";
+import { SOMNIA_SHANNON_CHAIN_ID } from "@/lib/dreamdex/config";
 import type { Market } from "@/lib/domain/models";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -16,6 +17,8 @@ export function RoomCreationForm({
   selectedMarketId: string | undefined;
 }) {
   const { address } = useAccount();
+  const chainId = useChainId();
+  const { switchChain, isPending: isSwitching } = useSwitchChain();
   const { signMessageAsync, isPending } = useSignMessage();
   const [title, setTitle] = useState("");
   const [thesis, setThesis] = useState("");
@@ -31,12 +34,16 @@ export function RoomCreationForm({
     try {
       const nonceResponse = await fetch("/api/auth/nonce", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-dreamrooms-wallet": address },
         body: JSON.stringify({ address, action: "room_create" }),
       });
-      const nonce = (await nonceResponse.json()) as { message?: string; nonce?: string };
+      const nonce = (await nonceResponse.json()) as {
+        message?: string;
+        nonce?: string;
+        error?: string;
+      };
       if (!nonceResponse.ok || !nonce.message || !nonce.nonce)
-        throw new Error("Authentication is unavailable.");
+        throw new Error(nonce.error ?? "Wallet authentication is unavailable.");
       const signature = await signMessageAsync({ message: nonce.message });
       const verifyResponse = await fetch("/api/auth/verify", {
         method: "POST",
@@ -109,9 +116,28 @@ export function RoomCreationForm({
             <option value="hi">हिन्दी</option>
           </select>
         </Field>
-        {address ? (
+        {address && chainId !== SOMNIA_SHANNON_CHAIN_ID ? (
+          <div className="grid gap-2">
+            <Button
+              disabled={isSwitching}
+              onClick={() => switchChain({ chainId: SOMNIA_SHANNON_CHAIN_ID })}
+              variant="danger"
+            >
+              {isSwitching ? "Switching…" : "Switch to Shannon before creating"}
+            </Button>
+            <p className="text-xs text-muted">
+              Wallet authentication is available only on Somnia Shannon (50312).
+            </p>
+          </div>
+        ) : address ? (
           <Button
-            disabled={isPending || !title.trim() || !marketId || !markets.length}
+            disabled={
+              isPending ||
+              !title.trim() ||
+              !marketId ||
+              !markets.length ||
+              chainId !== SOMNIA_SHANNON_CHAIN_ID
+            }
             onClick={() => void createRoom()}
           >
             {isPending ? "Awaiting signature…" : "Create shareable room"}

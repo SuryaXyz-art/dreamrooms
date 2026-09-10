@@ -7,7 +7,7 @@ import { z } from "zod";
 const bodySchema = z.object({ transactionHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/) });
 
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
-  const wallet = await requireWallet();
+  const wallet = await requireWallet(request);
   if (wallet instanceof NextResponse) return wallet;
   try {
     const parsed = bodySchema.safeParse(await readJSON(request));

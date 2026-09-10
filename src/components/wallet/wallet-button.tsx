@@ -8,34 +8,48 @@ import { StatusBadge } from "@/components/ui/status-badge";
 
 export function WalletButton({ alwaysVisible = false }: { alwaysVisible?: boolean }) {
   const { address, chainId, isConnected } = useAccount();
-  const { connectors, connect, isPending: isConnecting } = useConnect();
+  const { connectors, connect, isPending: isConnecting, error: connectError } = useConnect();
   const { disconnect } = useDisconnect();
-  const { switchChain, isPending: isSwitching } = useSwitchChain();
+  const { switchChain, isPending: isSwitching, error: switchError } = useSwitchChain();
   const connector = connectors[0];
 
   if (!isConnected || !address) {
     return (
-      <Button
-        className={alwaysVisible ? "inline-flex" : "hidden sm:inline-flex"}
-        disabled={!connector || isConnecting}
-        onClick={() => connector && connect({ connector })}
-        variant="secondary"
-      >
-        {isConnecting ? "Connecting…" : "Connect wallet"}
-      </Button>
+      <div className="grid justify-items-end gap-1">
+        <Button
+          className={alwaysVisible ? "inline-flex" : "hidden sm:inline-flex"}
+          disabled={!connector || isConnecting}
+          onClick={() => connector && connect({ connector })}
+          variant="secondary"
+        >
+          {isConnecting ? "Connecting…" : connector ? "Connect wallet" : "No browser wallet"}
+        </Button>
+        {connectError ? (
+          <p className="max-w-56 text-right text-xs text-failure" role="alert">
+            Connection was not completed. Open DreamRooms in a wallet-enabled browser and retry.
+          </p>
+        ) : null}
+      </div>
     );
   }
 
   if (chainId !== SOMNIA_SHANNON_CHAIN_ID) {
     return (
-      <Button
-        className={alwaysVisible ? "inline-flex" : "hidden sm:inline-flex"}
-        disabled={isSwitching}
-        onClick={() => switchChain({ chainId: SOMNIA_SHANNON_CHAIN_ID })}
-        variant="danger"
-      >
-        {isSwitching ? "Switching…" : "Switch to Shannon"}
-      </Button>
+      <div className="grid justify-items-end gap-1">
+        <Button
+          className={alwaysVisible ? "inline-flex" : "hidden sm:inline-flex"}
+          disabled={isSwitching}
+          onClick={() => switchChain({ chainId: SOMNIA_SHANNON_CHAIN_ID })}
+          variant="danger"
+        >
+          {isSwitching ? "Switching…" : "Switch to Shannon"}
+        </Button>
+        {switchError ? (
+          <p className="max-w-56 text-right text-xs text-failure" role="alert">
+            Network switch was not completed. Select Somnia Shannon (50312) in your wallet.
+          </p>
+        ) : null}
+      </div>
     );
   }
 

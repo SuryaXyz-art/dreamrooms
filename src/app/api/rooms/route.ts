@@ -23,7 +23,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const wallet = await requireWallet();
+  const wallet = await requireWallet(request);
   if (wallet instanceof NextResponse) return wallet;
   try {
     const body = createRoomSchema.parse(await readJSON(request));

@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { roomSlugSchema, sentimentSchema } from "@/lib/supabase/schema";
 
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
-  const wallet = await requireWallet();
+  const wallet = await requireWallet(request);
   if (wallet instanceof NextResponse) return wallet;
   try {
     const slug = roomSlugSchema.parse((await params).slug);

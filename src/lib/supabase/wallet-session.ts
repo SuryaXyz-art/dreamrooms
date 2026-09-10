@@ -82,12 +82,14 @@ export async function verifyNonceAndCreateSession(input: {
     }))
   )
     throw new Error("Wallet signature is invalid.");
-  const { error } = await supabase
+  const { data: consumedNonce, error } = await supabase
     .from("wallet_nonces")
     .update({ consumed_at: new Date().toISOString() })
     .eq("id", nonceRow.id)
-    .is("consumed_at", null);
-  if (error) throw new Error("Authentication nonce could not be consumed.");
+    .is("consumed_at", null)
+    .select("id")
+    .maybeSingle();
+  if (error || !consumedNonce) throw new Error("Authentication nonce could not be consumed.");
   const expires = Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS;
   const payload = Buffer.from(JSON.stringify({ address, expires }), "utf8").toString("base64url");
   const mac = createHmac("sha256", sessionSecret()).update(payload).digest("base64url");

@@ -404,6 +404,24 @@ request was completed by this run.
 - Added a reusable neutral live grid backdrop with reduced-motion CSS behavior, hidden-tab pause and
   a persistent local motion preference. The layer is decorative and pointer-inert.
 - Added `docs/DEPLOYMENT.md` with Vercel-compatible runtime, environment names and release checks.
+- Authentication nonce issuance now distinguishes malformed client input (`400`) from unavailable
+  Supabase/configuration transport (`503`) and exposes only a safe remediation message.
+- Wallet connection and Shannon network-switch errors are now visible and actionable; missing
+  injected providers no longer render as an unresponsive connection control.
+- Mutating room APIs now require an `x-dreamrooms-wallet` header matching the signed session wallet,
+  preventing stale-session writes after an account change. Nonce consumption now uses an atomic
+  conditional update with a returned row, preventing concurrent replay acceptance.
+- Room creation now blocks wallet authentication until the active chain is Somnia Shannon `50312`.
+
+### Deep bug check — 2026-09-11
+
+- `npm run typecheck` — PASS
+- `npm run lint` — PASS
+- `npm test -- --run` — PASS (28 passed, 1 intentionally skipped external read smoke test)
+- `npm run format:check` — PASS
+- `npm run build` — PASS
+- Opt-in live DreamDEX read-only smoke — PASS
+- `.env.local` ignore and client secret-name scans — PASS
 
 ### Verification after release-candidate fixes
 

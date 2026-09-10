@@ -2,8 +2,31 @@
 
 ## Current phase
 
-Release-candidate completion / Supabase transport remains blocked; local trading safety, portfolio
-read preparation, visual polish and release documentation are complete.
+Phase 1 gate / Supabase endpoint transport remains blocked. Later room, trade, deployment and
+submission steps are intentionally paused behind this dependency.
+
+## Latest Supabase connectivity check — 2026-09-10
+
+- Runtime: native Windows Node.js with the installed `@next/env` loader; project-root `.env.local`
+  was selected. No values were printed, logged, hashed or compared in output.
+- Required variables: all five are present. URL structure is a valid HTTPS API-origin shape.
+- Configured-host DNS: FAIL, sanitized result `ENOTFOUND`.
+- Configured `/rest/v1/` keyless request: FAIL, sanitized result `NETWORK_ERROR`; no HTTP response.
+- Public control DNS: PASS (`example.com`). Public control HTTPS: PASS (`HTTP_200`).
+- Proxy environment: ABSENT. No resolver, firewall, proxy or TLS settings were changed.
+- The endpoint identity and secret-key validity remain unverified because the configured host cannot
+  be reached. This is not evidence of incorrect credentials, schema, RLS or Realtime configuration.
+- Migration inspection: additive file contains no `DROP` or `TRUNCATE`; its `ALTER TABLE`/policy
+  effects still require review against the intended remote project. Supabase CLI is not installed.
+- `.env.local` remains Git-ignored. No wallet key or seed phrase was used.
+
+## Current manual gate
+
+Privately compare `NEXT_PUBLIC_SUPABASE_URL` with the intended project's API Project URL in the
+Supabase Dashboard, and verify `SUPABASE_SECRET_KEY` there without pasting either value into chat.
+Restore DNS/network reachability for that exact host or correct the local endpoint only from verified
+Dashboard information. Then ask Codex to rerun Step 1. Do not reapply migrations or proceed to the
+room journey until transport succeeds.
 
 ## Completed evidence
 
@@ -21,6 +44,13 @@ read preparation, visual polish and release documentation are complete.
   returns `CHANNEL_ERROR`.
 - The complete local quality gate and live DreamDEX smoke test were rerun successfully.
 - The skeptical judge audit and local product-quality fixes are recorded in `docs/WINNING_AUDIT.md`.
+- Wallet nonce issuance now classifies malformed requests separately from Supabase/configuration
+  outages, so room creation no longer collapses a service failure into a misleading generic error.
+- Wallet connection and network-switch failures now render safe actionable states instead of being
+  silently discarded by the header control.
+- Deep bug check fixed stale wallet-session binding: mutating room APIs now compare the connected
+  wallet header with the signed session, nonce consumption is atomic, and room creation gates wallet
+  authentication on Somnia Shannon `50312`.
 - Local production route review rendered live market discovery, explicit unavailable wallet states
   and updated education/empty-state surfaces without synthetic room or trade statistics.
 - Bounded approval and exact-next-transaction simulation are implemented; gas readiness uses estimated

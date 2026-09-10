@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { reactionSchema, roomSlugSchema } from "@/lib/supabase/schema";
 
 export async function POST(request: Request, { params }: { params: Promise<{ slug: string }> }) {
-  const wallet = await requireWallet();
+  const wallet = await requireWallet(request);
   if (wallet instanceof NextResponse) return wallet;
   try {
     const slug = roomSlugSchema.parse((await params).slug);
@@ -36,7 +36,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ slug: string }> }) {
-  const wallet = await requireWallet();
+  const wallet = await requireWallet(request);
   if (wallet instanceof NextResponse) return wallet;
   try {
     const slug = roomSlugSchema.parse((await params).slug);

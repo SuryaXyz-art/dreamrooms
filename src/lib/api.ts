@@ -5,10 +5,14 @@ export function errorResponse(message: string, status = 400): NextResponse {
   return NextResponse.json({ error: message }, { status });
 }
 
-export async function requireWallet(): Promise<string | NextResponse> {
+export async function requireWallet(request: Request): Promise<string | NextResponse> {
   try {
     const wallet = await getAuthenticatedWallet();
-    return wallet ?? errorResponse("Authenticate the wallet before changing room state.", 401);
+    const claimedWallet = request.headers.get("x-dreamrooms-wallet")?.trim().toLowerCase();
+    if (!wallet) return errorResponse("Authenticate the wallet before changing room state.", 401);
+    if (!claimedWallet || claimedWallet !== wallet)
+      return errorResponse("Connected wallet does not match the authenticated wallet.", 401);
+    return wallet;
   } catch {
     return errorResponse("Wallet authentication is not configured.", 503);
   }

@@ -99,7 +99,10 @@ export function RoomSocial({ slug }: { slug: string }) {
   useEffect(() => {
     if (!joined || !address) return;
     const heartbeat = () =>
-      void fetch(`/api/rooms/${slug}/heartbeat`, { method: "POST" }).catch(() => undefined);
+      void fetch(`/api/rooms/${slug}/heartbeat`, {
+        method: "POST",
+        headers: { "x-dreamrooms-wallet": address },
+      }).catch(() => undefined);
     heartbeat();
     const timer = window.setInterval(heartbeat, 30_000);
     return () => window.clearInterval(timer);
@@ -146,7 +149,7 @@ export function RoomSocial({ slug }: { slug: string }) {
       if (!authenticated) await authenticate(action);
       const response = await fetch(`/api/rooms/${slug}/${path}`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-dreamrooms-wallet": address },
         body: JSON.stringify(body),
       });
       await jsonResponse(response);
@@ -172,7 +175,7 @@ export function RoomSocial({ slug }: { slug: string }) {
       const isRemoving = activeReaction === reaction;
       const response = await fetch(`/api/rooms/${slug}/reactions`, {
         method: isRemoving ? "DELETE" : "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-dreamrooms-wallet": address },
         body: JSON.stringify({ reaction }),
       });
       await jsonResponse(response);
