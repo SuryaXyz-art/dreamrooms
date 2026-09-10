@@ -5,6 +5,34 @@
 Phase 1 gate / Supabase endpoint transport remains blocked. Later room, trade, deployment and
 submission steps are intentionally paused behind this dependency.
 
+## Latest recovery diagnosis — 2026-09-11
+
+- Runtime remains native Windows PowerShell/Node.js in the project root. `.env.local` is still
+  Git-ignored. No credential values were printed, logged, hashed or changed.
+- The effective local configuration currently contains duplicate non-empty declarations for
+  `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; this makes the selected
+  value ambiguous and must be resolved from verified Dashboard values before migration or room
+  testing. The server secret and session secret remain present without being exposed.
+- Public control DNS and HTTPS both pass. The configured Supabase hostname still fails with
+  `ENOTFOUND`; the keyless `/rest/v1/` probe therefore receives no HTTP response. No proxy is
+  configured and no resolver, firewall, TLS or network setting was changed.
+- Supabase Dashboard access is not authenticated in the available browser session, and the
+  Supabase CLI and `psql` are not installed. Project paused state, exact Dashboard URL match and
+  current `SUPABASE_SECRET_KEY` cannot be confirmed from this runtime.
+- The local landing route responds, but `/api/rooms` and wallet nonce issuance cannot complete
+  while Supabase transport is unavailable. Room creation is therefore blocked before persistence.
+- Session 1 room creation: FAIL/NOT COMPLETED (Supabase-backed auth/API unavailable). Session 2
+  clean-browser join: NOT RUN because no room ID was created. Cross-session persistence/isolation:
+  NOT VERIFIED. No database migration was applied.
+
+### Exact next manual action
+
+In the Supabase Dashboard, authenticate and privately verify that the intended project is active,
+copy its API Project URL from Project Settings → Data API, and compare it with the project-root
+`.env.local` value. Remove the duplicate declarations locally while preserving the verified values,
+then restore DNS reachability for that exact host. Report only MATCH or MISMATCH and ask Codex to
+rerun the connectivity gate. Do not paste credentials or URLs into chat.
+
 ## Latest Supabase connectivity check — 2026-09-10
 
 - Runtime: native Windows Node.js with the installed `@next/env` loader; project-root `.env.local`

@@ -1,5 +1,44 @@
 # Build status
 
+## Wallet balance and approval clarity — 2026-09-11
+
+Status: DONE
+Scope: improve the existing Shannon wallet trade panel without changing protocol behavior.
+
+- Native STT gas balance and settlement-token balance are displayed as separate wallet fields.
+- A short settlement-token allowance now produces an explicit approval step with the token, exact
+  bounded amount and selected DreamDEX pool context visible before the wallet prompt.
+- The order button remains disabled until the approval receipt succeeds and the allowance is
+  refreshed from chain.
+- Typed/preflight error wording now distinguishes insufficient STT for gas, insufficient settlement
+  token and allowance not granted. Approval reverts are also reported separately; no generic
+  transaction-failed message replaces these states.
+- No wallet signatures, approvals, orders or blockchain writes were executed by this change.
+
+Verification: `npm run typecheck`, focused trading tests, `npm run lint`, `npm run format:check`,
+`npm run build` and `git diff --check` pass.
+
+## Resolved-market claims and live portfolio read — 2026-09-11
+
+Status: IMPLEMENTED; live claim execution remains wallet-signature dependent.
+
+- `discoverFinalizedClaims` uses the official SDK finalized-market query and intersects it with
+  `getClaimable(account)`; it does not infer claimability from the live-market list or fixtures.
+- Before signing, `claimFinalizedPositions` re-reads each market and selected ERC-6909 outcome
+  balance, requiring finalized/resolved-or-voided state and sufficient balance.
+- The supported claim call is the SDK `trader.redeemMany` path with explicit market IDs, outcome
+  indices and amounts. The wallet signs manually; no private key or automatic signing is used.
+- After the receipt, the selected ERC-6909 balances are read again. `Claim verified` is shown only
+  when every claimed balance decreased by the claimed amount and the receipt status is successful.
+- `/portfolio` renders `PortfolioPositions`, which calls `/api/portfolio` only after a connected
+  Shannon wallet is present. The route calls the SDK `client.getPortfolio(address)` and returns
+  `source: "LIVE"`; empty results remain an explicit live empty state.
+- A current local read against the configured wallet returned HTTP 200 with `source: LIVE` and zero
+  indexed positions, so no claimable amount was fabricated or claimed.
+
+Verification: full local typecheck, tests, lint, format check and production build pass. No claim
+transaction was signed or recorded.
+
 ## Phase 0 — audit, verify sources and lock the plan
 
 Status: PARTIAL  

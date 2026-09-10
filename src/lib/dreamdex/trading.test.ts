@@ -195,4 +195,59 @@ describe("wallet trading kernel", () => {
     expect(checks.find((check) => check.id === "gas")?.status).toBe("checking");
     expect(checks.find((check) => check.id === "simulation")?.status).toBe("checking");
   });
+
+  it("shows distinct gas, settlement-token, and allowance gates", () => {
+    const market = {
+      id: marketId,
+      asset: "BTC" as const,
+      question: "BTC test",
+      strike: "0",
+      resolutionMode: "REFERENCE" as const,
+      intervalSeconds: 3600,
+      tradingStart: String(Math.floor(Date.now() / 1000) - 60),
+      expiry: String(Math.floor(Date.now() / 1000) + 3600),
+      status: "TRADING" as const,
+      yesTokenId: null,
+      noTokenId: null,
+      quoteDecimals: 6,
+      venueId: "venue",
+      operatorId: null,
+      poolAddress: address,
+      marketAddress: address,
+      outcomeTokenAddress: address,
+      collateralAddress: address,
+      poolNonce: "1",
+      upSymbol: "UP",
+      downSymbol: "DOWN",
+      source: "LIVE" as const,
+      freshness: "FRESH" as const,
+      lastUpdatedAt: new Date().toISOString(),
+    };
+    const quote = quoteTrade(marketId, "UP", "1", snapshot);
+    const checks = evaluateTradePreflight({
+      connected: true,
+      addressMatches: true,
+      chainId: 50312,
+      nativeBalance: 0n,
+      market,
+      bookSource: "LIVE",
+      bookFreshness: "FRESH",
+      snapshot: { ...snapshot, collateralBalance: 0n, allowance: 0n },
+      quote,
+      quoteError: null,
+      walletReady: true,
+      duplicatePending: false,
+      simulationStatus: "passed",
+      simulationDetail: "Exact transaction simulated.",
+      estimatedFee: 1_000n,
+    });
+    expect(checks.find((check) => check.id === "gas")?.detail).toContain(
+      "Insufficient STT for gas",
+    );
+    expect(checks.find((check) => check.id === "balance")?.detail).toContain("Insufficient tUSDC");
+    expect(checks.find((check) => check.id === "allowance")?.status).toBe("action");
+    expect(checks.find((check) => check.id === "allowance")?.detail).toContain(
+      "Allowance not granted",
+    );
+  });
 });

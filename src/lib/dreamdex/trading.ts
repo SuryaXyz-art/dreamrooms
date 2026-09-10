@@ -116,6 +116,12 @@ export interface TradePreflightCheck {
   critical: boolean;
 }
 
+export type TradeFailureCode =
+  | "INSUFFICIENT_STT_FOR_GAS"
+  | "INSUFFICIENT_SETTLEMENT_TOKEN"
+  | "ALLOWANCE_NOT_GRANTED"
+  | "APPROVAL_REVERTED";
+
 export interface TradePreflightInput {
   connected: boolean;
   addressMatches: boolean;
@@ -199,7 +205,7 @@ export function evaluateTradePreflight(input: TradePreflightInput): TradePreflig
         input.nativeBalance !== undefined && input.estimatedFee !== undefined
           ? input.nativeBalance >= input.estimatedFee + input.estimatedFee / 5n
             ? "Balance covers the estimated fee plus a 20% buffer."
-            : "Native STT is below the estimated fee plus a 20% buffer."
+            : "Insufficient STT for gas: add Shannon testnet STT before signing."
           : "Waiting for exact transaction fee estimation.",
       critical: true,
     },
@@ -209,7 +215,7 @@ export function evaluateTradePreflight(input: TradePreflightInput): TradePreflig
       status: balanceCovers ? "passed" : quote ? "failed" : "checking",
       detail: balanceCovers
         ? "Collateral balance covers the reviewed cap."
-        : "Collateral balance is below the maximum spend.",
+        : `Insufficient ${snapshot?.metadata.symbol ?? "settlement token"}: balance is below the maximum spend.`,
       critical: true,
     },
     {
@@ -224,9 +230,18 @@ export function evaluateTradePreflight(input: TradePreflightInput): TradePreflig
     {
       id: "allowance",
       label: "Current allowance read on chain",
-      status: snapshot ? "passed" : "checking",
+      status:
+        snapshot && quote
+          ? snapshot.allowance >= quote.maxSpendRaw
+            ? "passed"
+            : "action"
+          : snapshot
+            ? "checking"
+            : "checking",
       detail: snapshot
-        ? `${snapshot.allowance.toString()} raw allowance; approval is required if below the cap.`
+        ? quote && snapshot.allowance < quote.maxSpendRaw
+          ? `Allowance not granted: approve the exact ${formatRawAmount(quote.maxSpendRaw, snapshot.metadata.decimals)} ${snapshot.metadata.symbol} cap for the DreamDEX pool.`
+          : `${formatRawAmount(snapshot.allowance, snapshot.metadata.decimals)} ${snapshot.metadata.symbol} allowance is available.`
         : "Waiting for allowance read.",
       critical: true,
     },
@@ -361,6 +376,7 @@ export interface ClaimExecutionResult {
 }
 
 export class TradeLifecycleError extends Error {
+  readonly code: TradeFailureCode | null;
   readonly lifecycleState: Exclude<
     TradeLifecycleState,
     "review" | "awaiting_signature" | "submitted" | "confirmed"
@@ -372,10 +388,12 @@ export class TradeLifecycleError extends Error {
       TradeLifecycleState,
       "review" | "awaiting_signature" | "submitted" | "confirmed"
     >,
+    code: TradeFailureCode | null = null,
   ) {
     super(message);
     this.name = "TradeLifecycleError";
     this.lifecycleState = lifecycleState;
+    this.code = code;
   }
 }
 
@@ -463,8 +481,9 @@ async function buildTradeOrderContext(input: {
   const quote = quoteTrade(input.market.id, input.outcome, input.stakeInput, snapshot);
   if (snapshot.collateralBalance < quote.maxSpendRaw) {
     throw new TradeLifecycleError(
-      `Insufficient ${quote.collateralSymbol} balance for the maximum spend shown in review.`,
+      `Insufficient ${quote.collateralSymbol} settlement-token balance for the maximum spend shown in review.`,
       "reverted",
+      "INSUFFICIENT_SETTLEMENT_TOKEN",
     );
   }
   const exchange = createDreamDexExchange();
@@ -476,6 +495,74 @@ async function buildTradeOrderContext(input: {
     order: built.order,
     approval: snapshot.allowance < quote.maxSpendRaw ? buildBoundedApproval(snapshot, quote) : null,
   };
+}
+
+export interface ApprovalExecutionResult {
+  txHash: Hash | null;
+  allowanceRaw: bigint;
+  requiredAllowanceRaw: bigint;
+}
+
+/** Sends only the bounded ERC-20 approval; the order remains a separate manual action. */
+export async function approveTradeAllowance(input: {
+  market: Market;
+  outcome: BinaryBuyOutcome;
+  stakeInput: string;
+  account: Address;
+  walletClient: WalletClient;
+}): Promise<ApprovalExecutionResult> {
+  const context = await buildTradeOrderContext(input);
+  if (!context.approval) {
+    return {
+      txHash: null,
+      allowanceRaw: context.snapshot.allowance,
+      requiredAllowanceRaw: context.quote.maxSpendRaw,
+    };
+  }
+  try {
+    await simulatePreparedTransaction(context.approval, input.account);
+    const txHash = await input.walletClient.sendTransaction({
+      account: input.account,
+      chain: somniaShannon,
+      to: context.approval.to,
+      data: context.approval.data,
+      value: context.approval.value,
+    });
+    const receipt = await createShannonPublicClient().waitForTransactionReceipt({ hash: txHash });
+    if (!receiptSucceeded(receipt)) {
+      throw new TradeLifecycleError(
+        "The settlement-token approval transaction reverted. No order was submitted.",
+        "reverted",
+        "APPROVAL_REVERTED",
+      );
+    }
+    const refreshed = await readTradeSnapshot(input.market.id, input.account);
+    if (refreshed.allowance < context.quote.maxSpendRaw) {
+      throw new TradeLifecycleError(
+        "Allowance not granted: the approval receipt succeeded, but the refreshed allowance is still below the reviewed cap.",
+        "reverted",
+        "ALLOWANCE_NOT_GRANTED",
+      );
+    }
+    return {
+      txHash,
+      allowanceRaw: refreshed.allowance,
+      requiredAllowanceRaw: context.quote.maxSpendRaw,
+    };
+  } catch (error) {
+    if (error instanceof TradeLifecycleError) throw error;
+    if (isWalletRejection(error)) {
+      throw new TradeLifecycleError(
+        "Settlement-token approval was rejected. No order was submitted.",
+        "cancelled",
+      );
+    }
+    throw new TradeLifecycleError(
+      "The settlement-token approval could not be confirmed. No order was submitted.",
+      "reverted",
+      "APPROVAL_REVERTED",
+    );
+  }
 }
 
 async function simulatePreparedTransaction(
@@ -496,7 +583,16 @@ async function simulatePreparedTransaction(
     value: transaction.value,
   });
   const gasPrice = await client.getGasPrice();
-  return { estimatedGas, estimatedFee: estimatedGas * gasPrice };
+  const estimatedFee = estimatedGas * gasPrice;
+  const nativeBalance = await client.getBalance({ address: account });
+  if (nativeBalance < estimatedFee + estimatedFee / 5n) {
+    throw new TradeLifecycleError(
+      "Insufficient STT for gas: the native balance is below the estimated fee plus a 20% safety buffer.",
+      "reverted",
+      "INSUFFICIENT_STT_FOR_GAS",
+    );
+  }
+  return { estimatedGas, estimatedFee };
 }
 
 export interface TradeSimulationResult {
@@ -840,8 +936,9 @@ export async function executeBuyTrade(input: {
       quote = context.quote;
       if (snapshot.allowance < quote.maxSpendRaw)
         throw new TradeLifecycleError(
-          "The approval receipt succeeded, but the refreshed allowance is still too small.",
+          "Allowance not granted: the approval receipt succeeded, but the refreshed allowance is still below the reviewed cap.",
           "reverted",
+          "ALLOWANCE_NOT_GRANTED",
         );
       previousPositionBalance =
         quote.side === "BUY_YES" ? snapshot.upPositionBalance : snapshot.downPositionBalance;

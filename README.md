@@ -30,13 +30,13 @@ DreamRooms is a room around the market—not a replacement for the market.
 
 The deployed application was checked from a clean browser session on 2026-09-11.
 
-| Surface               | Verified state                                                                           |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| Landing and discovery | Live BTC/ETH market discovery, structured strike/window data and honest empty-room state |
-| Create room           | Market selection, order-book preview, room fields and wallet/preflight gating            |
-| Portfolio             | Wallet-gated open and finalized position states without invented positions               |
-| System status         | Shannon chain ID 50312, SDK/indexer read, dynamic venue discovery and live-market check  |
-| Safety states         | Invalid room and malformed portfolio requests fail safely                                |
+| Surface               | Verified state                                                                         |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| Landing and discovery | Route loads; live market/discovery presentation is visible in the deployed shell       |
+| Create room           | Route loads with market selection and wallet/preflight UI; persistence is not verified |
+| Portfolio             | Route loads with wallet-gated states; a production wallet read was not exercised       |
+| System status         | Route loads; Shannon/DreamDEX status surface is present                                |
+| Safety states         | Public invalid-input checks returned safe responses                                    |
 
 No transaction hash, filled order, claim or room-persistence result is claimed without independently verified evidence. See [known limitations](docs/KNOWN_LIMITATIONS.md).
 
@@ -55,9 +55,10 @@ The landing/discovery, create-room, portfolio and system-status surfaces were vi
 
 ### Room experience
 
-- Room title, thesis, language and selected market context.
-- Community UP/DOWN sentiment and presence boundaries.
-- Live market odds beside the room signal.
+- Room title, thesis, language and selected market context are implemented in the application.
+- Community sentiment, presence and persistence require a reachable Supabase deployment and were
+  not verified in this production session.
+- Live market odds are displayed beside the room signal when the upstream read is available.
 - Monochrome, mobile-first layout with reduced-motion support.
 
 ### Wallet and verification boundaries
@@ -70,9 +71,9 @@ The landing/discovery, create-room, portfolio and system-status surfaces were vi
 
 ### Portfolio and claims
 
-- Open positions are read from the chain-backed DreamDEX path.
-- Finalized markets are scanned separately from the live-market list.
-- Claimable states are shown only when the authoritative read path supports them.
+- The application contains chain-backed open-position and finalized-claim paths.
+- This production session did not connect a wallet, verify a position, or execute a claim.
+- No claimable amount, transaction hash or settlement result is claimed here.
 
 ## Architecture
 
@@ -167,6 +168,7 @@ supabase/migrations/     Additive social schema preparation
 - [Known limitations](docs/KNOWN_LIMITATIONS.md)
 - [Release checklist](docs/RELEASE_CHECKLIST.md)
 - [DoraHacks demo script](docs/DEMO_SCRIPT.md)
+- [Developer resources](docs/DEVELOPER_RESOURCES.md)
 
 ## Security and risk
 
@@ -174,13 +176,19 @@ DreamRooms is a Shannon testnet project. Event Contracts have binary outcomes; a
 
 ## Current release status
 
-The public read-only experience is available and the local quality gate passes. Supabase transport, two-session room persistence, a real wallet-signed order, settlement and final demo media remain evidence gates. The project does not turn a mock fixture or an unverified client claim into production proof.
+The public read-only shell and route checks are available. Production room/auth APIs returned HTTP
+503 during the latest session, so two-session persistence, a wallet-signed order, settlement,
+portfolio change and final demo media remain unverified evidence gates. The project does not turn a
+mock fixture or an unverified client claim into production proof.
 
-## References
+## Developer resources
 
-- [DreamDEX Event Contract documentation](https://docs.dreamdex.io/developers/event-contracts)
-- [Official DreamDEX bot kit](https://github.com/somnia-chain/dreamdex-bot-kit)
-- [Official hackathon template](https://github.com/IronicDeGawd/ec-dreamdex-hackathon-template)
+Start with the official Event Contract documentation, then use the starter template or Bot Kit according to the job. DreamRooms uses the browser-safe SDK path for user-signed app activity; it does not run an automated trading bot.
+
+- [Complete Event Contract documentation](https://docs.dreamdex.io/developers/event-contracts) — protocol concepts, lifecycle and integration reference.
+- [DreamDEX Bot Kit](https://github.com/somnia-chain/dreamdex-bot-kit) — official TypeScript/Python bot clients, strategies and operational guidance.
+- [DreamDEX Bot Builder](https://dreambot-builder.vercel.app/) — configure and generate a bot workflow through the official builder.
+- [Event Contract starter template](https://github.com/IronicDeGawd/ec-dreamdex-hackathon-template) — minimal mint, trade and settlement reference for the hackathon.
 - [DreamRooms live application](https://dreamrooms.vercel.app/)
 
 ## License

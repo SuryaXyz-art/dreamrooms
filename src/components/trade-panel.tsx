@@ -6,6 +6,7 @@ import type { Market, OrderBook } from "@/lib/domain/models";
 import { canTradeMarket } from "@/lib/dreamdex/market-gates";
 import {
   executeBuyTrade,
+  approveTradeAllowance,
   evaluateTradePreflight,
   formatRawAmount,
   quoteTrade,
@@ -67,6 +68,8 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
     "Review the exact market, amount and protective limit before signing.",
   );
   const [execution, setExecution] = useState<TradeExecutionResult | null>(null);
+  const [approvalTxHash, setApprovalTxHash] = useState<string | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
   const [isReading, setIsReading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [simulation, setSimulation] = useState<{
@@ -226,6 +229,10 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
     ],
   );
   const preflightPassed = preflightChecks.every((check) => check.status === "passed");
+  const allowanceRequired = Boolean(snapshot && quote && snapshot.allowance < quote.maxSpendRaw);
+  const approvalPreflightPassed = preflightChecks
+    .filter((check) => check.id !== "allowance")
+    .every((check) => check.status === "passed");
   const canSign = Boolean(
     isConnected &&
     address &&
@@ -242,6 +249,10 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
     !quoteError &&
     !["awaiting_signature", "submitted"].includes(lifecycleState),
   );
+
+  const gasCheck = preflightChecks.find((check) => check.id === "gas");
+  const balanceCheck = preflightChecks.find((check) => check.id === "balance");
+  const allowanceCheck = preflightChecks.find((check) => check.id === "allowance");
 
   async function placeOrder() {
     if (!address || !walletClient || !quote || isSubmitting) return;
@@ -267,6 +278,37 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
       if (!(error instanceof TradeLifecycleError)) setLifecycleState("reverted");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function approveAllowance() {
+    if (!address || !walletClient || !quote || !allowanceRequired || isApproving) return;
+    setIsApproving(true);
+    setApprovalTxHash(null);
+    setLifecycleState("awaiting_signature");
+    setLifecycleDetail("Review the exact bounded settlement-token approval in your wallet.");
+    try {
+      const result = await approveTradeAllowance({
+        market,
+        outcome,
+        stakeInput: stake,
+        account: address,
+        walletClient,
+      });
+      if (result.txHash) setApprovalTxHash(result.txHash);
+      const refreshed = await readTradeSnapshot(market.id, address);
+      setSnapshot(refreshed);
+      setLifecycleState("review");
+      setLifecycleDetail("Approval verified. Review the refreshed quote before placing the order.");
+    } catch (error) {
+      const message =
+        error instanceof TradeLifecycleError
+          ? error.message
+          : "The settlement-token approval could not be confirmed. No order was submitted.";
+      setLifecycleState(error instanceof TradeLifecycleError ? error.lifecycleState : "reverted");
+      setLifecycleDetail(message);
+    } finally {
+      setIsApproving(false);
     }
   }
 
@@ -418,7 +460,7 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
             </span>
           </div>
           <div className="flex items-center justify-between gap-4">
-            <span className="text-muted">Collateral balance</span>
+            <span className="text-muted">Settlement-token balance</span>
             <span className="font-mono">
               {snapshot
                 ? `${formatRawAmount(snapshot.collateralBalance, snapshot.metadata.decimals)} ${snapshot.metadata.symbol}`
@@ -426,7 +468,7 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
             </span>
           </div>
           <div className="flex items-center justify-between gap-4">
-            <span className="text-muted">Pool allowance</span>
+            <span className="text-muted">DreamDEX pool allowance</span>
             <span className="font-mono">
               {snapshot
                 ? `${formatRawAmount(snapshot.allowance, snapshot.metadata.decimals)} ${snapshot.metadata.symbol}`
@@ -464,6 +506,63 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
           <p className="rounded-xl border border-failure/30 bg-failure/10 p-3 text-sm text-failure">
             {readError}
           </p>
+        ) : null}
+        {gasCheck?.status === "failed" ? (
+          <p className="rounded-xl border border-failure/30 bg-failure/10 p-3 text-sm text-failure">
+            Insufficient STT for gas. Add Somnia Shannon testnet STT before approving or placing an
+            order.
+          </p>
+        ) : null}
+        {balanceCheck?.status === "failed" ? (
+          <p className="rounded-xl border border-failure/30 bg-failure/10 p-3 text-sm text-failure">
+            Insufficient settlement token. Your {snapshot?.metadata.symbol ?? "tUSDC"} balance is
+            below the reviewed maximum spend.
+          </p>
+        ) : null}
+        {allowanceRequired ? (
+          <section
+            aria-labelledby={`approval-${market.id}`}
+            className="grid gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4"
+          >
+            <div>
+              <h3 className="font-semibold" id={`approval-${market.id}`}>
+                Settlement-token approval required
+              </h3>
+              <p className="mt-1 text-sm text-muted">
+                Allowance not granted for the selected DreamDEX pool. Approve only the exact
+                reviewed maximum spend; placing the order remains a separate wallet action.
+              </p>
+            </div>
+            <dl className="grid gap-2 text-xs sm:grid-cols-2">
+              <div>
+                <dt className="text-muted">Token</dt>
+                <dd className="font-mono">{snapshot?.metadata.symbol ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-muted">Required allowance</dt>
+                <dd className="font-mono">
+                  {quote && snapshot
+                    ? `${formatRawAmount(quote.maxSpendRaw, snapshot.metadata.decimals)} ${snapshot.metadata.symbol}`
+                    : "—"}
+                </dd>
+              </div>
+            </dl>
+            <Button
+              disabled={!approvalPreflightPassed || simulation.status !== "passed" || isApproving}
+              onClick={() => void approveAllowance()}
+              type="button"
+            >
+              {isApproving ? "Awaiting approval…" : "Approve exact settlement-token amount"}
+            </Button>
+            {allowanceCheck?.detail ? (
+              <p className="text-xs text-muted">{allowanceCheck.detail}</p>
+            ) : null}
+            {approvalTxHash ? (
+              <p className="break-all text-xs text-muted">
+                Approval confirmed: <span className="font-mono">{approvalTxHash}</span>
+              </p>
+            ) : null}
+          </section>
         ) : null}
         {!canTradeMarket(market) || book?.source !== "LIVE" ? (
           <p className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
@@ -596,12 +695,14 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
         ) : null}
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button disabled={!canSign} onClick={() => void placeOrder()}>
+          <Button disabled={!canSign || allowanceRequired} onClick={() => void placeOrder()}>
             {lifecycleState === "awaiting_signature"
               ? "Awaiting wallet…"
               : lifecycleState === "submitted"
                 ? "Confirming…"
-                : `Review & place ${outcome} IOC`}
+                : allowanceRequired
+                  ? "Approve settlement token first"
+                  : `Review & place ${outcome} IOC`}
           </Button>
           <StatusBadge status={stateLabel(lifecycleState)} />
         </div>
