@@ -3,11 +3,10 @@ import { PageHeading, PageLayout } from "@/components/page-layout";
 import { EmptyState } from "@/components/empty-state";
 import { MarketCard } from "@/components/market-card";
 import { OrderBookPanel } from "@/components/order-book-panel";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Field, Input, Textarea } from "@/components/ui/input";
 import { DataSourceBadge } from "@/components/ui/status-badge";
 import { TradePanel } from "@/components/trade-panel";
+import { RoomCreationForm } from "@/components/room-creation-form";
 import { createMarketProvider } from "@/lib/providers";
 import { canTradeMarket } from "@/lib/dreamdex/market-gates";
 import { formatUnixTimestamp } from "@/lib/utils";
@@ -33,47 +32,11 @@ export default async function NewRoomPage({
       <PageHeading
         eyebrow="Room builder"
         title="Give a prediction a home."
-        body="Choose a live, chain-verified market below. Room persistence arrives in a later phase."
+        body="Choose a live, chain-verified market, add your thesis and share the room before the window closes."
         action={<DataSourceBadge source={discovery.source} />}
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-        <Card>
-          <CardHeader>
-            <p className="text-xs uppercase tracking-[0.18em] text-muted">Room details</p>
-            <h2 className="mt-1 text-xl font-semibold">Set the tone</h2>
-          </CardHeader>
-          <CardContent>
-            <form className="grid gap-5">
-              <Field hint="Shown at the top of the shared room." label="Room title">
-                <Input placeholder="e.g. BTC close: above or below?" />
-              </Field>
-              <Field label="Your thesis">
-                <Textarea placeholder="What should the room pay attention to?" />
-              </Field>
-              <Field
-                hint="Room creation will validate this against the live market in a later phase."
-                label="Market"
-              >
-                <select
-                  className="min-h-11 rounded-xl border bg-page px-3 text-ink"
-                  defaultValue={market?.id ?? "unavailable"}
-                  disabled={!market}
-                >
-                  {discovery.markets.map((candidate) => (
-                    <option key={candidate.id} value={candidate.id}>
-                      {candidate.asset} —{" "}
-                      {candidate.resolutionMode === "REFERENCE"
-                        ? "Opening reference"
-                        : candidate.strike}
-                    </option>
-                  ))}
-                  {!market && <option value="unavailable">No live market connected</option>}
-                </select>
-              </Field>
-              <Button disabled>Save room (Phase 3)</Button>
-            </form>
-          </CardContent>
-        </Card>
+        <RoomCreationForm markets={discovery.markets} selectedMarketId={selectedMarketId} />
         <Card>
           <CardHeader>
             <p className="text-xs uppercase tracking-[0.18em] text-muted">Selected market</p>

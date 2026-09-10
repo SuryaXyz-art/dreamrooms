@@ -7,7 +7,7 @@ export class EnvironmentValidationError extends Error {
   }
 }
 
-function optionalHttpsUrl(name: string, value: string | undefined): void {
+function optionalHttpsUrl(name: string, value: string | undefined, allowLocalhost = false): void {
   if (!value) return;
   let parsed: URL;
   try {
@@ -15,8 +15,13 @@ function optionalHttpsUrl(name: string, value: string | undefined): void {
   } catch {
     throw new EnvironmentValidationError(`${name} must be a valid HTTPS URL.`);
   }
-  if (parsed.protocol !== "https:") {
-    throw new EnvironmentValidationError(`${name} must use HTTPS.`);
+  if (
+    parsed.protocol !== "https:" &&
+    !(allowLocalhost && parsed.protocol === "http:" && parsed.hostname === "localhost")
+  ) {
+    throw new EnvironmentValidationError(
+      `${name} must use HTTPS${allowLocalhost ? " (or localhost HTTP)" : ""}.`,
+    );
   }
 }
 
@@ -50,10 +55,16 @@ export function validateEnvironment(env: EnvironmentRecord = process.env): {
   const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
   const publishableKey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ?? "";
   const secretKey = env.SUPABASE_SECRET_KEY?.trim() || undefined;
+  const sessionSecret = env.DREAMROOMS_SESSION_SECRET?.trim() || undefined;
   const hasSupabase = Boolean(supabaseUrl || publishableKey || secretKey);
   if (hasSupabase && (!supabaseUrl || !publishableKey)) {
     throw new EnvironmentValidationError(
       "Supabase URL and publishable key are required together; the server secret is optional until server writes are enabled.",
+    );
+  }
+  if (sessionSecret && sessionSecret.length < 32) {
+    throw new EnvironmentValidationError(
+      "DREAMROOMS_SESSION_SECRET must be at least 32 characters.",
     );
   }
   optionalHttpsUrl(
@@ -69,6 +80,7 @@ export function validateEnvironment(env: EnvironmentRecord = process.env): {
     env.NEXT_PUBLIC_DREAMDEX_INDEXER_URL?.trim() || undefined,
   );
   optionalHttpsUrl("NEXT_PUBLIC_SUPABASE_URL", supabaseUrl || undefined);
+  optionalHttpsUrl("NEXT_PUBLIC_APP_URL", env.NEXT_PUBLIC_APP_URL?.trim() || undefined, true);
   let dreamDex: ReturnType<typeof getDreamDexRuntimeConfig>;
   try {
     dreamDex = getDreamDexRuntimeConfig(env);

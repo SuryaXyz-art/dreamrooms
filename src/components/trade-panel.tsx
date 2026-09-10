@@ -10,12 +10,14 @@ import {
   formatRawAmount,
   quoteTrade,
   readTradeSnapshot,
+  simulateNextTradeTransaction,
   TradeLifecycleError,
   type BinaryBuyOutcome,
   type TradeLifecycleState,
   type TradeQuote,
   type TradeSnapshot,
   type TradeExecutionResult,
+  type TradeSimulationResult,
 } from "@/lib/dreamdex/trading";
 import { SOMNIA_SHANNON_CHAIN_ID, SOMNIA_SHANNON_EXPLORER_URL } from "@/lib/dreamdex/config";
 import { WalletButton } from "@/components/wallet/wallet-button";
@@ -67,6 +69,14 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
   const [execution, setExecution] = useState<TradeExecutionResult | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [simulation, setSimulation] = useState<{
+    status: "checking" | "passed" | "failed" | "unavailable";
+    detail: string;
+    result?: TradeSimulationResult;
+  }>({
+    status: "unavailable",
+    detail: "Connect a Shannon wallet to simulate the next transaction.",
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -114,11 +124,78 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
     if (!snapshot || quoteError) return null;
     return quoteTrade(market.id, outcome, stake, snapshot);
   }, [market.id, outcome, quoteError, snapshot, stake]);
+  const addressMatches = Boolean(
+    address &&
+    walletClient?.account?.address &&
+    walletClient.account.address.toLowerCase() === address.toLowerCase(),
+  );
+  useEffect(() => {
+    let cancelled = false;
+    if (
+      !address ||
+      !walletClient ||
+      chainId !== SOMNIA_SHANNON_CHAIN_ID ||
+      market.source !== "LIVE" ||
+      !quote ||
+      quoteError
+    ) {
+      const resetTimer = window.setTimeout(
+        () =>
+          setSimulation({
+            status: "unavailable",
+            detail: "Waiting for a valid live quote and Shannon wallet.",
+          }),
+        0,
+      );
+      return () => {
+        cancelled = true;
+        window.clearTimeout(resetTimer);
+      };
+    }
+    const checkingTimer = window.setTimeout(
+      () =>
+        setSimulation({
+          status: "checking",
+          detail: "Simulating the exact next transaction and estimating gas…",
+        }),
+      0,
+    );
+    const timer = window.setTimeout(() => {
+      void simulateNextTradeTransaction({
+        market,
+        outcome,
+        stakeInput: stake,
+        account: address,
+        walletClient,
+      })
+        .then((result) => {
+          if (!cancelled)
+            setSimulation({
+              status: "passed",
+              detail: `${result.transactionKind === "approval" ? "Exact bounded approval" : "Exact order"} simulated; estimated fee includes a 20% buffer in the gas check.`,
+              result,
+            });
+        })
+        .catch((error: unknown) => {
+          if (!cancelled)
+            setSimulation({
+              status: "failed",
+              detail:
+                error instanceof Error ? error.message : "The exact transaction simulation failed.",
+            });
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(checkingTimer);
+      window.clearTimeout(timer);
+    };
+  }, [address, chainId, market, outcome, quote, quoteError, stake, walletClient]);
   const preflightChecks = useMemo(
     () =>
       evaluateTradePreflight({
         connected: isConnected,
-        addressMatches: Boolean(address),
+        addressMatches,
         chainId,
         nativeBalance: nativeBalance.data?.value,
         market,
@@ -129,9 +206,12 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
         quoteError,
         walletReady: Boolean(walletClient),
         duplicatePending: isSubmitting,
+        simulationStatus: simulation.status,
+        simulationDetail: simulation.detail,
+        estimatedFee: simulation.result?.estimatedFee,
       }),
     [
-      address,
+      addressMatches,
       book,
       chainId,
       isConnected,
@@ -141,6 +221,7 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
       quote,
       quoteError,
       snapshot,
+      simulation,
       walletClient,
     ],
   );
@@ -157,6 +238,7 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
     !isReading &&
     !isSubmitting &&
     preflightPassed &&
+    simulation.status === "passed" &&
     !quoteError &&
     !["awaiting_signature", "submitted"].includes(lifecycleState),
   );
@@ -353,13 +435,21 @@ export function TradePanel({ market, book }: { market: Market; book: OrderBook |
           </div>
           <p className="text-xs leading-5 text-muted">
             A short allowance triggers a separate exact ERC-20 approval prompt before the order. No
-            private key is needed.
+            private key is needed. The approval is bounded to the reviewed maximum spend.
           </p>
           <div className="flex items-center justify-between gap-4">
             <span className="text-muted">Current UP / DOWN position</span>
             <span className="font-mono">
               {snapshot
                 ? `${formatRawAmount(snapshot.upPositionBalance, snapshot.metadata.decimals)} / ${formatRawAmount(snapshot.downPositionBalance, snapshot.metadata.decimals)} shares`
+                : "—"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-muted">Estimated next transaction fee</span>
+            <span className="font-mono">
+              {simulation.result
+                ? `${formatRawAmount(simulation.result.estimatedFee, nativeBalance.data?.decimals ?? 18, 6)} STT`
                 : "—"}
             </span>
           </div>

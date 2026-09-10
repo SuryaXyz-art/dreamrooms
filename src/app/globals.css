@@ -117,6 +117,42 @@ a {
   background-size: 24px 24px;
 }
 
+.live-backdrop {
+  pointer-events: none;
+  position: fixed;
+  inset: 4rem 0 0;
+  z-index: 0;
+  opacity: 0.8;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px),
+    radial-gradient(circle at 20% 12%, rgba(255, 255, 255, 0.06), transparent 24rem);
+  background-size:
+    42px 42px,
+    42px 42px,
+    auto;
+  mask-image: linear-gradient(to bottom, black, transparent 88%);
+}
+
+.live-backdrop-motion {
+  animation: backdrop-drift 28s linear infinite;
+}
+
+@keyframes backdrop-drift {
+  from {
+    background-position:
+      0 0,
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      42px 42px,
+      42px 42px,
+      3rem 1rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -125,5 +161,15 @@ a {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .live-backdrop {
+    opacity: 0.55;
+    background-size:
+      30px 30px,
+      30px 30px,
+      auto;
   }
 }

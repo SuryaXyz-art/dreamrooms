@@ -96,6 +96,17 @@ Decision: use a strict black/white/neutral token system and distinguish UP/DOWN 
 
 Reason: a restrained terminal/editorial system improves contrast, preserves meaning without color dependence and keeps the social prediction product visually distinct while leaving protocol semantics unchanged.
 
+## ADR-0018 — Supabase owns social state; DreamDEX owns financial truth
+
+Decision: persist rooms, membership, presence, sentiment, reactions and verified activity in
+Supabase behind server-only privileged writes. A verified trade record is created only after the
+server independently checks the Shannon receipt, sender, selected market pool, fill event and
+authoritative outcome-token balance.
+
+Reason: the room layer needs shareable low-latency state, while market status, fills, positions and
+claims must remain protocol facts. RLS exposes only safe reads, wallet nonce signatures bind writes
+to a wallet, and the migration contains no destructive statements.
+
 ## Environment naming and optional Supabase — 2026-09-09
 
 Decision: use `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for browser-safe configuration and reserve `SUPABASE_SECRET_KEY` for future server-only room writes. Keep Supabase optional until Phase 4 is implemented.

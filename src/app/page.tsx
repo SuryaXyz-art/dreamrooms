@@ -6,6 +6,8 @@ import { EmptyState } from "@/components/empty-state";
 import { DataSourceBadge } from "@/components/ui/status-badge";
 import { createMarketProvider, createRoomProvider } from "@/lib/providers";
 import { LocalizedAction } from "@/components/localized-action";
+import { LiveSignalTrace } from "@/components/live-signal-trace";
+import { ProjectInformation } from "@/components/project-information";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,12 @@ export default async function HomePage() {
     marketProvider.discoverLiveMarkets(),
     roomProvider.listRooms(),
   ]);
+  const signalValues = discovery.markets
+    .map(
+      (market) =>
+        discovery.orderBooks[market.id]?.bestUpAsk ?? discovery.orderBooks[market.id]?.bestUpBid,
+    )
+    .filter((value): value is number => value !== null && value !== undefined);
 
   return (
     <PageLayout>
@@ -86,6 +94,9 @@ export default async function HomePage() {
           </div>
         )}
       </section>
+      <div className="mt-6">
+        <LiveSignalTrace source={discovery.source} values={signalValues} />
+      </div>
       <section className="mt-14">
         <PageHeading
           eyebrow="Community rooms"
@@ -98,11 +109,12 @@ export default async function HomePage() {
           ) : (
             <EmptyState
               title="No rooms available"
-              body="Create a room once live market reads and persistence are enabled."
+              body="Be the first host: choose a live market, add your thesis and share the room."
             />
           )}
         </div>
       </section>
+      <ProjectInformation />
       <section
         className="mt-14 rounded-xl border border-line bg-panel p-6 sm:p-8"
         id="how-it-works"

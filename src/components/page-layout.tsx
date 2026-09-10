@@ -1,11 +1,15 @@
 import type { ReactNode } from "react";
 import { Navigation } from "@/components/navigation";
+import { LiveBackdrop } from "@/components/live-backdrop";
 
 export function PageLayout({ children }: { children: ReactNode }) {
   return (
     <>
+      <LiveBackdrop />
       <Navigation />
-      <main className="mx-auto w-full max-w-[1320px] px-4 py-7 sm:px-8 sm:py-12">{children}</main>
+      <main className="relative z-10 mx-auto w-full max-w-[1320px] px-4 py-7 sm:px-8 sm:py-12">
+        {children}
+      </main>
     </>
   );
 }

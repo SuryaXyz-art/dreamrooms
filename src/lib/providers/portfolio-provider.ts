@@ -17,7 +17,7 @@ class FoundationPortfolioProvider implements PortfolioProvider {
       positions: [],
       settlements: [],
       source: "UNAVAILABLE",
-      message: "Wallet positions and claims will be connected in Phase 3+.",
+      message: "Connect a wallet to read positions and finalized claims from Shannon.",
     };
   }
 }

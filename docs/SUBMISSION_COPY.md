@@ -16,7 +16,7 @@ DreamRooms turns live DreamDEX BTC/ETH Event Contracts on Somnia Shannon into sh
 
 Event Contracts are easier to understand when people can gather around the exact event window. DreamRooms gives a host a focused place to share a thesis, lets participants compare UP/DOWN conviction with the DreamDEX order book, and keeps actionable state grounded in chain reads. It is mobile-first, bilingual-ready and explicit about testnet risk, binary outcomes and self-custody.
 
-The current release candidate contains the Next.js shell, typed domain/provider boundaries, dynamic BTC/ETH read-only discovery, structured market normalization, order-book display, Shannon wallet guard and official raw trade preparation. The social room and verified leaderboard layer, public deployment and real transaction evidence remain pending and are not represented as completed here.
+The current local release candidate contains the Next.js shell, typed domain/provider boundaries, dynamic BTC/ETH read-only discovery, structured market normalization, order-book display, Shannon wallet guard, official raw trade preparation, and Supabase room/social APIs with signed wallet sessions and verified-only activity filtering. Remote Supabase verification, public deployment and real transaction evidence remain pending and are not represented as completed here.
 
 ## Technology
 
@@ -42,4 +42,4 @@ The project can make Somnia Event Contracts more legible to communities, streame
 
 ## Limitations and roadmap
 
-See [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md). Next milestones are Supabase-backed rooms with RLS and signed membership, verified-only leaderboard records, public deployment, real Shannon evidence, and a recorded demo. Public application URL, repository URL and demo-video URL are intentionally not invented.
+See [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md). Next milestones are remote Supabase/schema verification, a two-session room proof, real Shannon evidence, public deployment and a recorded demo. Public application URL, repository URL and demo-video URL are intentionally not invented.

@@ -335,3 +335,94 @@ NO-GO. Estimated score: 48/100. The read-only integration and local foundation a
 - `npm test -- --run` — PASS (22 passed, 1 intentionally skipped external smoke test)
 - `npm run build` — PASS
 - Secret assignment scan — PASS; no private-key assignments or legacy Supabase names found.
+
+## Phase 4 — Supabase room and social layer — 2026-09-09
+
+Status: PARTIAL / AWAITING SUPABASE CONNECTIVITY VERIFICATION
+Scope: server-owned Supabase room persistence, signed wallet session boundary, participant
+presence, sentiment, reactions, verified trade association and room activity UI. No deployment,
+Git publication or new protocol behavior was started.
+
+### Delivered
+
+- Added typed browser/server Supabase clients. The server client is guarded with `server-only` and
+  uses `SUPABASE_SECRET_KEY` only on the server; the browser receives only the publishable key.
+- Added additive migration `supabase/migrations/20260909000100_create_dreamrooms_social.sql` for
+  rooms, participants, sentiments, verified trades, reactions and wallet nonces, including indexes,
+  constraints, timestamps, RLS and public-write revokes.
+- Added nonce-bound EIP-191 wallet authentication with an HttpOnly signed session cookie. No
+  private key or automatic transaction signature is used.
+- Added room create/read/join/heartbeat/sentiment/reaction/leaderboard and verified-trade routes.
+  Room creation re-discovers and validates the selected live Trading market server-side.
+- Added room creation and live social UI with five-second refresh plus Supabase Realtime listeners.
+  Sentiment and reactions are not displayed as market trades; verified activity is empty until the
+  server checks a real receipt and outcome-token position.
+- Added migration safety, environment validation and deterministic 100-iteration social-state tests.
+
+### Verification
+
+- `npm run typecheck` — PASS
+- `npm run lint` — PASS
+- `npm test -- --run` — PASS (27 passed, 1 intentionally skipped external read smoke test)
+- `npm run format:check` — PASS
+- `npm run build` — PASS
+- `git check-ignore -q .env.local` — PASS
+- Secret-name scan excluding ignored local environment files — PASS; no values printed.
+- `supabase --version` — NOT RUN: Supabase CLI is not installed in this workspace.
+- Remote Supabase connectivity/migration verification — BLOCKED: required variables are present and
+  structurally accepted, but the configured Supabase host failed DNS resolution; no remote schema
+  request was completed.
+- Live DreamDEX read path remains the Phase 2 verified adapter; the opt-in read-only smoke was
+  rerun on 2026-09-09 and passed, while no Phase 4 code changes protocol reads or claims.
+
+### Manual gate
+
+Before room creation can work locally, set the three required values by variable name only:
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`; set a
+`DREAMROOMS_SESSION_SECRET` and all required public variables are present with one declaration each.
+Verify the Supabase project URL/DNS access, restart the dev server, independently confirm the
+reported Dashboard migration, then test `/rooms/new` and a second browser session. No remote schema
+request was completed by this run.
+
+## Skeptical judge and release audit — 2026-09-09
+
+- Created `docs/WINNING_AUDIT.md` with evidence classes, judge objections, provisional score and ranked continuation order.
+- Replaced stale product claims in the README, submission copy, demo script, release checklist, judging map and known-limitations document.
+- Added only local, protocol-neutral improvements: live quote trace, localized project information/FAQ, locale persistence, room heartbeat/fallback messaging, reaction removal and strict room-slug validation.
+- Public URL, clean-browser production smoke, remote Supabase schema/RLS verification, two-session proof, real DreamDEX transaction evidence, screenshots and demo video remain unverified or blocked.
+
+## Release-candidate completion work — 2026-09-10
+
+- Corrected bounded approval preparation and exact transaction simulation. Readiness now compares
+  estimated gas plus a documented 20% buffer against native STT and blocks until the exact next
+  transaction is simulated.
+- Historical DreamDEX room-trade verification no longer rejects a genuine fill solely because its
+  market later expired/finalized or its outcome balance later decreased. The receipt/fill event is
+  retained as the historical authority and the current outcome balance is still read back.
+- Added a server-backed `/api/portfolio` read using the pinned SDK `getPortfolio` method and a live
+  open-position/recent-fill UI. Provider failures remain unavailable rather than zero-value success.
+- Added a reusable neutral live grid backdrop with reduced-motion CSS behavior, hidden-tab pause and
+  a persistent local motion preference. The layer is decorative and pointer-inert.
+- Added `docs/DEPLOYMENT.md` with Vercel-compatible runtime, environment names and release checks.
+
+### Verification after release-candidate fixes
+
+- `npm run typecheck` — PASS
+- `npm run lint` — PASS
+- `npm test -- --run` — PASS (28 passed, 1 intentionally skipped external read smoke test)
+- `npm run format:check` — PASS
+- `npm run build` — PASS
+- Opt-in live DreamDEX read-only smoke — PASS (one dynamically discovered chain-verified BTC/ETH market)
+- `git diff --check` — PASS (newline normalization warnings only)
+- `npm audit --omit=dev --audit-level=high` — PASS (0 vulnerabilities)
+- `.env.local` ignore check — PASS; client bundle secret-name scan — PASS; no secret values printed.
+- Local browser capture — PASS for rendered mobile landing/live discovery and accessibility-visible
+  states. Stable screenshot files were not written because the available browser capture API only
+  returns/displayed bytes; no screenshot asset is claimed in the README.
+
+### Still blocked / not run
+
+- Supabase remote schema, RLS, Realtime and two-session journey: NOT RUN because the configured host
+  remains DNS-unreachable in the native Node runtime.
+- Real wallet-signed DreamDEX order, receipt, position, claim and production deployment: NOT RUN;
+  each requires the owner's manual wallet/deployment action.

@@ -12,6 +12,8 @@ const base = {
   NEXT_PUBLIC_SUPABASE_URL: "",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
   SUPABASE_SECRET_KEY: "",
+  DREAMROOMS_SESSION_SECRET: "",
+  NEXT_PUBLIC_APP_URL: "",
 };
 
 describe("environment contract", () => {
@@ -29,6 +31,8 @@ describe("environment contract", () => {
       NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "publishable-placeholder",
       SUPABASE_SECRET_KEY: "server-placeholder",
+      DREAMROOMS_SESSION_SECRET: "a".repeat(32),
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000",
     });
     expect(result.supabase?.publishableKey).toBe("publishable-placeholder");
   });
@@ -50,5 +54,11 @@ describe("environment contract", () => {
     expect(() =>
       validateEnvironment({ ...base, NEXT_PUBLIC_SUPABASE_URL: "https://x.test" }),
     ).toThrow(EnvironmentValidationError);
+  });
+
+  it("rejects a short session secret", () => {
+    expect(() => validateEnvironment({ ...base, DREAMROOMS_SESSION_SECRET: "too-short" })).toThrow(
+      EnvironmentValidationError,
+    );
   });
 });

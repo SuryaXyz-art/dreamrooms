@@ -1,6 +1,7 @@
 # DreamRooms architecture
 
-Status: locked in Phase 0 and implemented through the Phase 3 wallet/order/settlement lifecycle. Room persistence and social features remain intentionally deferred to their later phases.
+Status: locked in Phase 0 and implemented through the Phase 4 room/social lifecycle. Production
+deployment and public verification remain later release work.
 
 ## Decision
 
@@ -79,4 +80,4 @@ src/types/                     strict domain types and API schemas
 
 Optional analytics, bots, notifications, native room contracts and background claim workers are explicitly post-MVP.
 
-Phase 1 implements the route shell, local accessible UI primitives, English/Hindi message catalogs, strict domain models/adapters and provider interfaces. Phase 2 adds the live provider and uses live Shannon reads by default; `DREAMROOMS_DATA_MODE=demo` is an explicit local-only fixture switch. Phase 3 adds the Shannon-only browser wallet boundary, exact raw BUY UP/DOWN IOC preparation, explicit approval/order receipt verification, authoritative position readback and finalized claim path. Live discovery failures return `UNAVAILABLE` or per-row `STALE` data and never fall back to a demo market. Room persistence, social records and deployment remain later-phase work.
+Phase 1 implements the route shell, local accessible UI primitives, English/Hindi message catalogs, strict domain models/adapters and provider interfaces. Phase 2 adds the live provider and uses live Shannon reads by default; `DREAMROOMS_DATA_MODE=demo` is an explicit local-only fixture switch. Phase 3 adds the Shannon-only browser wallet boundary, exact raw BUY UP/DOWN IOC preparation, explicit approval/order receipt verification, authoritative position readback and finalized claim path. Phase 4 adds server-owned Supabase room persistence, signed wallet sessions, participant presence, sentiment, reactions and receipt/position-verified social activity. Live discovery failures return `UNAVAILABLE` or per-row `STALE` data and never fall back to a demo market. Production deployment remains later release work.

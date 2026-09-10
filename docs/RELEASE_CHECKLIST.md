@@ -1,6 +1,6 @@
 # DreamRooms release checklist
 
-Status: release candidate audit completed 2026-09-07. This workspace is not ready to claim the full hackathon MVP because the real wallet evidence and Phase 4 social layer are incomplete.
+Status: local release candidate audit updated 2026-09-09. This workspace is not ready to claim the full hackathon MVP because remote Supabase verification, real wallet evidence, public deployment and presentation evidence remain incomplete.
 
 ## Automated gates
 
@@ -22,7 +22,7 @@ Status: release candidate audit completed 2026-09-07. This workspace is not read
 - [x] Market status, freshness, raw tick/lot values and bounded expiry gate orders.
 - [x] Reverted receipts are rejected; no automatic signature or transaction exists.
 - [x] In-flight trade submission is locked in the client.
-- [ ] Room API/RLS review: no room API or database migration exists yet.
+- [x] Room API/RLS code and additive migration reviewed locally; remote application and realtime remain unverified because the configured Supabase host did not resolve.
 
 ## Manual release gates
 

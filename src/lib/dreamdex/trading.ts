@@ -15,6 +15,7 @@ import {
 } from "@somnia-chain/markets-sdk";
 import {
   decodeEventLog,
+  encodeFunctionData,
   formatUnits,
   parseUnits,
   type Address,
@@ -128,6 +129,9 @@ export interface TradePreflightInput {
   quoteError: string | null;
   walletReady: boolean;
   duplicatePending: boolean;
+  simulationStatus: "checking" | "passed" | "failed" | "unavailable";
+  simulationDetail: string;
+  estimatedFee: bigint | undefined;
 }
 
 export function evaluateTradePreflight(input: TradePreflightInput): TradePreflightCheck[] {
@@ -141,7 +145,9 @@ export function evaluateTradePreflight(input: TradePreflightInput): TradePreflig
     quote.quantityRaw % snapshot.bookParams.lotSize === 0n &&
     quote.limitPriceRaw % snapshot.bookParams.tickSize === 0n,
   );
-  const maxSpendBounded = Boolean(quote && quote.maxSpendRaw <= 1_000_000n);
+  const maxSpendBounded = Boolean(
+    quote && snapshot && quote.maxSpendRaw <= oneCollateral(snapshot.metadata.decimals),
+  );
   const balanceCovers = Boolean(
     quote && snapshot && snapshot.collateralBalance >= quote.maxSpendRaw,
   );
@@ -183,11 +189,18 @@ export function evaluateTradePreflight(input: TradePreflightInput): TradePreflig
     {
       id: "gas",
       label: "Native STT available for gas",
-      status: input.nativeBalance !== undefined && input.nativeBalance > 0n ? "passed" : "action",
+      status:
+        input.nativeBalance !== undefined && input.estimatedFee !== undefined
+          ? input.nativeBalance >= input.estimatedFee + input.estimatedFee / 5n
+            ? "passed"
+            : "failed"
+          : "checking",
       detail:
-        input.nativeBalance !== undefined && input.nativeBalance > 0n
-          ? "Non-zero STT balance detected; wallet simulation remains authoritative."
-          : "Fund the wallet with Shannon STT.",
+        input.nativeBalance !== undefined && input.estimatedFee !== undefined
+          ? input.nativeBalance >= input.estimatedFee + input.estimatedFee / 5n
+            ? "Balance covers the estimated fee plus a 20% buffer."
+            : "Native STT is below the estimated fee plus a 20% buffer."
+          : "Waiting for exact transaction fee estimation.",
       critical: true,
     },
     {
@@ -298,10 +311,15 @@ export function evaluateTradePreflight(input: TradePreflightInput): TradePreflig
     {
       id: "simulation",
       label: "Gas/calldata simulation supported",
-      status: input.walletReady ? "passed" : "action",
-      detail: input.walletReady
-        ? "Wallet client is ready for the final wallet/provider simulation."
-        : "Connect the Shannon wallet before signing.",
+      status:
+        input.simulationStatus === "passed"
+          ? "passed"
+          : input.simulationStatus === "failed"
+            ? "failed"
+            : input.simulationStatus === "unavailable"
+              ? "action"
+              : "checking",
+      detail: input.simulationDetail,
       critical: true,
     },
     {
@@ -359,6 +377,152 @@ export class TradeLifecycleError extends Error {
     this.name = "TradeLifecycleError";
     this.lifecycleState = lifecycleState;
   }
+}
+
+const erc20ApproveAbi = [
+  {
+    type: "function",
+    name: "approve",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+] as const;
+
+interface PreparedTransaction {
+  to: Address;
+  data: Hex;
+  value: bigint;
+}
+
+interface TradeOrderContext {
+  snapshot: TradeSnapshot;
+  quote: TradeQuote;
+  order: PreparedTransaction;
+  approval: PreparedTransaction | null;
+}
+
+function buildOrderParams(snapshot: TradeSnapshot, quote: TradeQuote) {
+  return {
+    pool: snapshot.onchain.pool,
+    side: quote.side,
+    price: quote.yesPriceRaw,
+    quantity: quote.quantityRaw,
+    outcomeToken: snapshot.onchain.outcomeToken,
+    yesId: snapshot.onchain.yesId,
+    noId: snapshot.onchain.noId,
+    collateral: snapshot.onchain.collateral,
+    expireTimestampNs: snapshot.onchain.expiry * 1_000_000_000n,
+    orderType: 2,
+    autoApprove: false,
+  } as const;
+}
+
+function buildBoundedApproval(snapshot: TradeSnapshot, quote: TradeQuote): PreparedTransaction {
+  return {
+    to: snapshot.onchain.collateral,
+    data: encodeFunctionData({
+      abi: erc20ApproveAbi,
+      functionName: "approve",
+      args: [snapshot.onchain.pool, quote.maxSpendRaw],
+    }),
+    value: 0n,
+  };
+}
+
+async function buildTradeOrderContext(input: {
+  market: Market;
+  outcome: BinaryBuyOutcome;
+  stakeInput: string;
+  account: Address;
+  walletClient: WalletClient;
+}): Promise<TradeOrderContext> {
+  if (!canTradeMarket(input.market)) {
+    throw new TradeLifecycleError(
+      "Trading is disabled until this market is on-chain Trading with fresh live data.",
+      "reverted",
+    );
+  }
+  const snapshot = await readTradeSnapshot(input.market.id, input.account);
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  if (snapshot.onchain.status !== 1) {
+    throw new TradeLifecycleError(
+      `The market is ${snapshot.onchain.status === 2 ? "locked" : "not trading"} on chain. Refresh discovery.`,
+      "reverted",
+    );
+  }
+  if (snapshot.onchain.expiry <= now) {
+    throw new TradeLifecycleError(
+      "This market window has expired. Refresh to choose the next market.",
+      "expired",
+    );
+  }
+  const quote = quoteTrade(input.market.id, input.outcome, input.stakeInput, snapshot);
+  if (snapshot.collateralBalance < quote.maxSpendRaw) {
+    throw new TradeLifecycleError(
+      `Insufficient ${quote.collateralSymbol} balance for the maximum spend shown in review.`,
+      "reverted",
+    );
+  }
+  const exchange = createDreamDexExchange();
+  exchange.setSigner({ walletClient: input.walletClient, account: input.account });
+  const built = await exchange.trader.buildPlaceOrder(buildOrderParams(snapshot, quote));
+  return {
+    snapshot,
+    quote,
+    order: built.order,
+    approval: snapshot.allowance < quote.maxSpendRaw ? buildBoundedApproval(snapshot, quote) : null,
+  };
+}
+
+async function simulatePreparedTransaction(
+  transaction: PreparedTransaction,
+  account: Address,
+): Promise<{ estimatedGas: bigint; estimatedFee: bigint }> {
+  const client = createShannonPublicClient();
+  await client.call({
+    account,
+    to: transaction.to,
+    data: transaction.data,
+    value: transaction.value,
+  });
+  const estimatedGas = await client.estimateGas({
+    account,
+    to: transaction.to,
+    data: transaction.data,
+    value: transaction.value,
+  });
+  const gasPrice = await client.getGasPrice();
+  return { estimatedGas, estimatedFee: estimatedGas * gasPrice };
+}
+
+export interface TradeSimulationResult {
+  transactionKind: "approval" | "order";
+  to: Address;
+  data: Hex;
+  value: bigint;
+  estimatedGas: bigint;
+  estimatedFee: bigint;
+}
+
+export async function simulateNextTradeTransaction(input: {
+  market: Market;
+  outcome: BinaryBuyOutcome;
+  stakeInput: string;
+  account: Address;
+  walletClient: WalletClient;
+}): Promise<TradeSimulationResult> {
+  const context = await buildTradeOrderContext(input);
+  const transaction = context.approval ?? context.order;
+  const estimate = await simulatePreparedTransaction(transaction, input.account);
+  return {
+    transactionKind: context.approval ? "approval" : "order",
+    ...transaction,
+    ...estimate,
+  };
 }
 
 function asMarketId(value: string): Hex {
@@ -617,74 +781,33 @@ export async function executeBuyTrade(input: {
   onStateChange?: (state: TradeLifecycleState, detail?: string) => void;
 }): Promise<TradeExecutionResult> {
   const { market, outcome, stakeInput, account, walletClient, onStateChange } = input;
-  if (!canTradeMarket(market)) {
-    throw new TradeLifecycleError(
-      "Trading is disabled until this market is on-chain Trading with fresh live data.",
-      "reverted",
-    );
-  }
-
+  let context = await buildTradeOrderContext({
+    market,
+    outcome,
+    stakeInput,
+    account,
+    walletClient,
+  });
+  let { snapshot, quote } = context;
   const exchange = createDreamDexExchange();
-  const snapshot = await readTradeSnapshot(market.id, account);
-  const now = BigInt(Math.floor(Date.now() / 1000));
-  if (snapshot.onchain.status !== 1) {
-    throw new TradeLifecycleError(
-      `The market is ${snapshot.onchain.status === 2 ? "locked" : "not trading"} on chain. Refresh discovery.`,
-      "reverted",
-    );
-  }
-  if (snapshot.onchain.expiry <= now) {
-    throw new TradeLifecycleError(
-      "This market window has expired. Refresh to choose the next market.",
-      "expired",
-    );
-  }
-
-  const quote = quoteTrade(market.id, outcome, stakeInput, snapshot);
-  if (snapshot.collateralBalance < quote.maxSpendRaw) {
-    throw new TradeLifecycleError(
-      `Insufficient ${quote.collateralSymbol} balance for the maximum spend shown in review.`,
-      "reverted",
-    );
-  }
-
   exchange.setSigner({ walletClient, account });
-  const previousPositionBalance =
+  let previousPositionBalance =
     quote.side === "BUY_YES" ? snapshot.upPositionBalance : snapshot.downPositionBalance;
-  const orderParams = {
-    pool: snapshot.onchain.pool,
-    side: quote.side,
-    price: quote.yesPriceRaw,
-    quantity: quote.quantityRaw,
-    outcomeToken: snapshot.onchain.outcomeToken,
-    yesId: snapshot.onchain.yesId,
-    noId: snapshot.onchain.noId,
-    collateral: snapshot.onchain.collateral,
-    expireTimestampNs: snapshot.onchain.expiry * 1_000_000_000n,
-    orderType: 2,
-    autoApprove: false,
-  } as const;
 
   let approvalTxHash: Hash | null = null;
   try {
-    if (snapshot.allowance < quote.maxSpendRaw) {
+    if (context.approval) {
       onStateChange?.(
         "awaiting_signature",
         "Approve the displayed collateral allowance in your wallet.",
       );
-      const built = await exchange.trader.buildPlaceOrder({ ...orderParams, autoApprove: true });
-      if (!built.approval) {
-        throw new TradeLifecycleError(
-          "The SDK did not return the required collateral approval call.",
-          "reverted",
-        );
-      }
+      await simulatePreparedTransaction(context.approval, account);
       approvalTxHash = await walletClient.sendTransaction({
         account,
         chain: somniaShannon,
-        to: built.approval.to,
-        data: built.approval.data,
-        value: built.approval.value,
+        to: context.approval.to,
+        data: context.approval.data,
+        value: context.approval.value,
       });
       onStateChange?.("submitted", approvalTxHash);
       const approvalReceipt = await createShannonPublicClient().waitForTransactionReceipt({
@@ -694,10 +817,39 @@ export async function executeBuyTrade(input: {
         onStateChange?.("reverted", "The collateral approval transaction reverted.");
         throw new TradeLifecycleError("The collateral approval transaction reverted.", "reverted");
       }
+
+      context = await buildTradeOrderContext({
+        market,
+        outcome,
+        stakeInput,
+        account,
+        walletClient,
+      });
+      if (
+        context.quote.quantityRaw !== quote.quantityRaw ||
+        context.quote.yesPriceRaw !== quote.yesPriceRaw ||
+        context.quote.limitPriceRaw !== quote.limitPriceRaw ||
+        context.quote.maxSpendRaw !== quote.maxSpendRaw
+      ) {
+        throw new TradeLifecycleError(
+          "The live quote changed after approval. Review the updated market before signing an order.",
+          "reverted",
+        );
+      }
+      snapshot = context.snapshot;
+      quote = context.quote;
+      if (snapshot.allowance < quote.maxSpendRaw)
+        throw new TradeLifecycleError(
+          "The approval receipt succeeded, but the refreshed allowance is still too small.",
+          "reverted",
+        );
+      previousPositionBalance =
+        quote.side === "BUY_YES" ? snapshot.upPositionBalance : snapshot.downPositionBalance;
     }
 
     onStateChange?.("awaiting_signature", "Approve the exact IOC order shown in review.");
-    const builtOrder = await exchange.trader.buildPlaceOrder(orderParams);
+    const builtOrder = await exchange.trader.buildPlaceOrder(buildOrderParams(snapshot, quote));
+    await simulatePreparedTransaction(builtOrder.order, account);
     const txHash = await walletClient.sendTransaction({
       account,
       chain: somniaShannon,

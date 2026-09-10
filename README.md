@@ -4,7 +4,7 @@ DreamRooms turns live DreamDEX BTC/ETH Event Contracts into shareable prediction
 
 ## Status
 
-This is a release-candidate foundation, not a completed hackathon submission. The current workspace has a polished Next.js shell, live read-only DreamDEX integration and a wallet-signed BUY UP/BUY DOWN preparation path. It does not yet contain the Phase 4 room database/social layer, a public deployment, or a recorded real wallet transaction.
+This is a local release candidate, not a completed public hackathon submission. The workspace contains the polished Next.js shell, live read-only DreamDEX integration, Shannon wallet-signed BUY UP/BUY DOWN flow, and Supabase-backed room/social implementation. Public deployment, remote Supabase verification and a recorded real wallet transaction remain external evidence gates.
 
 ## Why it matters
 
@@ -43,7 +43,10 @@ Primary references: [DreamDEX Event Contracts docs](https://docs.dreamdex.io/dev
 
 ## Screenshots and demo media
 
-Add real screenshots or a GIF here after deployment. Do not use mock media that implies a live trade or room.
+The current repository intentionally does not embed fabricated media. A real local browser capture was
+reviewed during release-candidate work, but the available browser capture surface did not export a stable
+PNG into this repository. Add only captures made from the executable app and caption local versus public
+data clearly.
 
 ## Run locally
 
@@ -61,7 +64,7 @@ $env:DREAMROOMS_DATA_MODE = "demo"
 npm run dev
 ```
 
-Never place a private key in `.env.local`. Copy `.env.example` only if endpoint overrides are needed. The browser wallet signs actions; server credentials are not currently used.
+Never place a private key in `.env.local`. Copy `.env.example` only if endpoint overrides are needed. Browser wallets sign actions; `SUPABASE_SECRET_KEY` is server-only and is required only for the room API.
 
 ## Testing
 
@@ -82,15 +85,14 @@ npm test -- src/lib/dreamdex/integration.smoke.test.ts --reporter=verbose
 
 ## Evidence and limitations
 
-See [deployment evidence](docs/DEPLOYMENT_EVIDENCE.md), [known limitations](docs/KNOWN_LIMITATIONS.md), [release checklist](docs/RELEASE_CHECKLIST.md) and [testnet runbook](docs/TESTNET_RUNBOOK.md). No public application URL or transaction hash is claimed in this repository yet.
+See [deployment preparation](docs/DEPLOYMENT.md), [deployment evidence](docs/DEPLOYMENT_EVIDENCE.md), [known limitations](docs/KNOWN_LIMITATIONS.md), [release checklist](docs/RELEASE_CHECKLIST.md), [winning audit](docs/WINNING_AUDIT.md) and [testnet runbook](docs/TESTNET_RUNBOOK.md). No public application URL or transaction hash is claimed in this repository yet.
 
 ## Roadmap
 
-1. Implement Supabase rooms, RLS, signed membership, presence, sentiment and verified activity.
-2. Add a two-session room-sharing test and verified-only leaderboard.
+1. Restore Supabase reachability and complete the two-session room-sharing evidence run.
+2. Complete one low-value Shannon testnet trade and claim with user-reviewed wallet signatures.
 3. Deploy to an authorized Vercel project and record clean-browser evidence.
-4. Complete one low-value Shannon testnet trade and claim with user-reviewed wallet signatures.
-5. Supply real screenshots/video and complete the DoraHacks form manually.
+4. Supply real screenshots/video and complete the DoraHacks form manually.
 
 ## License
 
