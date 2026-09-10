@@ -26,8 +26,12 @@ const LOCALE_STORAGE_KEY = "dreamrooms-locale";
 
 function readStoredLocale(): Locale {
   if (typeof window === "undefined") return "en";
-  const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-  return stored === "hi" ? "hi" : "en";
+  try {
+    const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+    return stored === "hi" ? "hi" : "en";
+  } catch {
+    return "en";
+  }
 }
 
 function subscribeToLocale(onChange: () => void): () => void {
@@ -42,7 +46,11 @@ function subscribeToLocale(onChange: () => void): () => void {
 export function AppProviders({ children }: { children: ReactNode }) {
   const locale = useSyncExternalStore<Locale>(subscribeToLocale, readStoredLocale, () => "en");
   const setLocale = useCallback((nextLocale: Locale) => {
-    window.localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale);
+    try {
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale);
+    } catch {
+      // Locale remains active in this tab even when persistent storage is blocked.
+    }
     window.dispatchEvent(new Event("dreamrooms-locale-change"));
   }, []);
   const [queryClient] = useState(() => new QueryClient());

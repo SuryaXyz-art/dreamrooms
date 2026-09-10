@@ -18,22 +18,26 @@ function formatCountdown(ms: number): string {
 }
 
 export function MarketSummary({ market, book }: { market: Market; book: OrderBook | undefined }) {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState<number | null>(null);
   const [speaking, setSpeaking] = useState(false);
   const { locale, t } = useLocale();
   const end = Number(market.expiry) * 1000;
-  const timeLeft = Number.isFinite(end) ? Math.max(0, end - now) : 0;
+  const timeLeft = now === null || !Number.isFinite(end) ? null : Math.max(0, end - now);
   const up = book?.bestUpAsk ?? book?.bestUpBid;
   const down = book?.bestDownAsk ?? book?.bestDownBid;
   const summary = useMemo(
     () =>
-      `${market.asset} event contract. ${market.question}. ${market.status}. ${formatCountdown(timeLeft)} remaining.`,
+      `${market.asset} event contract. ${market.question}. ${market.status}. ${timeLeft === null ? "Countdown loading" : `${formatCountdown(timeLeft)} remaining`}.`,
     [market.asset, market.question, market.status, timeLeft],
   );
 
   useEffect(() => {
+    const initialUpdate = window.setTimeout(() => setNow(Date.now()), 0);
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearTimeout(initialUpdate);
+      window.clearInterval(timer);
+    };
   }, []);
 
   function speakSummary() {
@@ -85,9 +89,11 @@ export function MarketSummary({ market, book }: { market: Market; book: OrderBoo
         <div className="rounded-2xl border border-line bg-page/70 px-5 py-4 lg:min-w-64">
           <p className="text-xs uppercase tracking-[0.16em] text-muted">{t.room.expiry}</p>
           <p className="mt-2 font-mono text-3xl font-semibold tabular-nums" aria-live="polite">
-            {formatCountdown(timeLeft)}
+            {timeLeft === null ? "—" : formatCountdown(timeLeft)}
           </p>
-          <p className="mt-1 text-xs text-muted">{timeLeft ? t.room.open : t.room.closed}</p>
+          <p className="mt-1 text-xs text-muted">
+            {timeLeft === null ? "Loading countdown…" : timeLeft ? t.room.open : t.room.closed}
+          </p>
         </div>
       </div>
       <div className="mt-7 grid grid-cols-2 gap-3" aria-label="Live probability comparison">

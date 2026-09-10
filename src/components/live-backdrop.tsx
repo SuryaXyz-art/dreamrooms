@@ -6,7 +6,11 @@ const MOTION_KEY = "dreamrooms-motion";
 
 function readMotionPreference(): boolean {
   if (typeof window === "undefined") return true;
-  return window.localStorage.getItem(MOTION_KEY) !== "off";
+  try {
+    return window.localStorage.getItem(MOTION_KEY) !== "off";
+  } catch {
+    return true;
+  }
 }
 
 export function LiveBackdrop() {
@@ -27,7 +31,11 @@ export function LiveBackdrop() {
   function toggleMotion() {
     const next = !enabled;
     setEnabled(next);
-    window.localStorage.setItem(MOTION_KEY, next ? "on" : "off");
+    try {
+      window.localStorage.setItem(MOTION_KEY, next ? "on" : "off");
+    } catch {
+      // Storage may be unavailable; the in-memory preference still applies.
+    }
   }
 
   return (

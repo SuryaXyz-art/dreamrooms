@@ -19,6 +19,6 @@ Verified 2026-09-11 from a clean browser tab against [https://dreamrooms.vercel.
 
 - Wallet connect and wallet-signed approval/order: NOT RUN; no signature was requested.
 - Successful receipt, fill decode, position readback and claim: NOT RUN; no transaction hash is claimed.
-- Supabase room creation, clean-second-browser join, presence, sentiment, reactions and realtime: NOT VERIFIED because the configured Supabase host was unreachable during the last diagnosis.
+- Supabase room creation, clean-second-browser join, presence, sentiment, reactions and realtime: NOT VERIFIED. As of 2026-09-10, `/api/rooms` returned HTTP 200 with `{"rooms":[]}` and `/api/auth/nonce` returned HTTP 200 with a valid nonce response, but the end-to-end room journey was not completed.
 - Repository screenshots: NOT EMBEDDED. Browser visuals were reviewed, but this capture surface did not provide stable PNG files for a truthful README asset. Add only real exports from the deployed session.
 - `DREAMROOMS_DATA_MODE` was not set to demo for this public check; the visible market data was live-read output.

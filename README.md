@@ -176,10 +176,11 @@ DreamRooms is a Shannon testnet project. Event Contracts have binary outcomes; a
 
 ## Current release status
 
-The public read-only shell and route checks are available. Production room/auth APIs returned HTTP
-503 during the latest session, so two-session persistence, a wallet-signed order, settlement,
-portfolio change and final demo media remain unverified evidence gates. The project does not turn a
-mock fixture or an unverified client claim into production proof.
+The public read-only shell and route checks are available. As of 2026-09-10, production `/api/rooms`
+returned HTTP 200 with `{"rooms":[]}` and `/api/auth/nonce` returned HTTP 200 with a valid nonce
+response. Two-session persistence, a wallet-signed order, settlement, portfolio change and final
+demo media remain unverified evidence gates. The project does not turn a mock fixture or an
+unverified client claim into production proof.
 
 ## Developer resources
 

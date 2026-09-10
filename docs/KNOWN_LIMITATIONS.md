@@ -1,7 +1,8 @@
 # Known limitations
 
-Evidence review: 2026-09-11. The deployed route shell returned HTTP 200, but the deployed room and
-wallet-auth APIs returned HTTP 503 during the same verification session.
+Evidence review: 2026-09-11. As of 2026-09-10, the deployed `/api/rooms` endpoint returned HTTP 200
+with `{"rooms":[]}`, and `/api/auth/nonce` returned HTTP 200 with a valid nonce response. Room
+persistence, RLS, Realtime and wallet-flow verification remain incomplete.
 
 - No actual wallet-signed Shannon order, receipt, verified position or claim was executed in this workspace. Existing Phase 3 logs explicitly state that evidence is absent.
 - Supabase room persistence, signed sessions, presence, sentiment, reactions and verified activity

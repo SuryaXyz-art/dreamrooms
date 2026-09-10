@@ -59,7 +59,7 @@ export function RoomCreationForm({
       if (!verifyResponse.ok) throw new Error("Wallet authentication failed.");
       const response = await fetch("/api/rooms", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-dreamrooms-wallet": address },
         body: JSON.stringify({ marketId, title, thesis, language }),
       });
       const result = (await response.json()) as { shareUrl?: string; error?: string };

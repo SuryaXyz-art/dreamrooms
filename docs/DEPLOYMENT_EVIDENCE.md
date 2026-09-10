@@ -1,6 +1,6 @@
 # Deployment evidence
 
-Status: PARTIAL — public route checks completed; room/auth APIs, wallet, room persistence and transaction evidence remain unverified.
+Status: PARTIAL — public route checks and current room/auth API health completed; wallet, room persistence and transaction evidence remain unverified.
 
 Date: 2026-09-11
 
@@ -19,9 +19,11 @@ Date: 2026-09-11
 - Public route and clean-browser checks are recorded in `docs/PUBLIC_SMOKE_TEST.md`.
 - Production route checks on 2026-09-11 returned HTTP 200 for `/`, `/rooms/new`, `/portfolio` and
   `/status`.
-- Production `/api/rooms` returned HTTP 503 and production `/api/auth/nonce` returned HTTP 503.
+- As of 2026-09-10, production `/api/rooms` returned HTTP 200 with `{"rooms":[]}`, and
+  production `/api/auth/nonce` returned HTTP 200 with a valid nonce response.
 - Cross-session room check, Supabase persistence, wallet authentication and production wallet
-  transaction were not completed because those APIs were unavailable.
+  transaction were not completed; the endpoints responded, but these end-to-end flows remain
+  unverified.
 - No transaction hash is recorded because no wallet signature was requested or executed.
 
 ## Remaining release evidence
