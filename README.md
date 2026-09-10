@@ -43,9 +43,15 @@ Primary references: [DreamDEX Event Contracts docs](https://docs.dreamdex.io/dev
 
 ## Screenshots and demo media
 
-The public landing page and create-room experience were reviewed from the deployed URL. This repository
-does not embed fabricated media: stable PNG/GIF exports still need to be supplied from a real browser
-session and captioned as live data or demo fixtures. See the [public smoke evidence](docs/PUBLIC_SMOKE_TEST.md).
+The public landing page and create-room experience were reviewed from the deployed URL, and the local
+landing page was reviewed while the deterministic test suite ran in explicit `DEMO` mode. This repository
+does not embed fabricated media: the available browser capture surface can display screenshots but cannot
+export stable PNG/GIF files into the repository. See the [public smoke evidence](docs/PUBLIC_SMOKE_TEST.md)
+and [mock feature test report](docs/MOCK_TEST_REPORT.md).
+
+Screenshots reviewed in this session: landing/discovery, create-room, portfolio and system status. These
+were captured from the real rendered application and are intentionally not represented as downloadable
+README assets until a stable export is available.
 
 ## Run locally
 
@@ -81,6 +87,9 @@ The external read-only smoke test is opt-in:
 $env:RUN_DREAMDEX_SMOKE = "1"
 npm test -- src/lib/dreamdex/integration.smoke.test.ts --reporter=verbose
 ```
+
+For deterministic local UI/provider fixtures, use `DREAMROOMS_DATA_MODE=demo`; every fixture is visibly
+labelled `DEMO` and must never be used as production evidence.
 
 ## Evidence and limitations
 
