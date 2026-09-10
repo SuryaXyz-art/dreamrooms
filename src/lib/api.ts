@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedWallet } from "@/lib/supabase/wallet-session";
+import { clearWalletSession, getAuthenticatedWallet } from "@/lib/supabase/wallet-session";
+import { walletAddressesMatch } from "@/lib/supabase/wallet-address";
 
 export function errorResponse(message: string, status = 400): NextResponse {
   return NextResponse.json({ error: message }, { status });
@@ -10,8 +11,10 @@ export async function requireWallet(request: Request): Promise<string | NextResp
     const wallet = await getAuthenticatedWallet();
     const claimedWallet = request.headers.get("x-dreamrooms-wallet")?.trim().toLowerCase();
     if (!wallet) return errorResponse("Authenticate the wallet before changing room state.", 401);
-    if (!claimedWallet || claimedWallet !== wallet)
-      return errorResponse("Connected wallet does not match the authenticated wallet.", 401);
+    if (!walletAddressesMatch(wallet, claimedWallet)) {
+      await clearWalletSession();
+      return errorResponse("Wallet account changed. Authenticate the connected wallet again.", 401);
+    }
     return wallet;
   } catch {
     return errorResponse("Wallet authentication is not configured.", 503);

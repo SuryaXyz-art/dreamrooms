@@ -1,5 +1,26 @@
 # Build status
 
+## Wallet/session mismatch recovery — 2026-09-11
+
+Status: DONE
+
+- Confirmed the authenticated address is stored in the signed, HTTP-only
+  `dreamrooms_session` cookie payload; it is not a JWT claim or a Supabase session row.
+- Confirmed later mutation requests derive the connected address from the client wagmi account and
+  send it in `x-dreamrooms-wallet`. `requireWallet` compares both addresses after lowercasing.
+- This is not a case-sensitivity defect. The observed failure means the session address and current
+  connected address diverged, consistent with an account switch or stale session. The repository
+  does not expose enough telemetry to distinguish which user action created that divergence.
+- Added account-change recovery in `src/components/room-social.tsx`: local authentication/join state
+  resets and the stale server cookie is cleared before the next action requires fresh signing.
+- Added server-side mismatch recovery in `src/lib/api.ts`: mismatches clear the cookie and return an
+  actionable re-authentication response instead of trusting either address.
+- Added `src/app/api/auth/logout/route.ts` and the pure `walletAddressesMatch` helper with tests for
+  address A versus B, casing normalization and malformed input.
+
+Verification: `npm run typecheck`, `npm test -- --run`, `npm run lint`, `npm run format:check`,
+`npm run build` and `git diff --check` pass.
+
 ## Wallet balance and approval clarity — 2026-09-11
 
 Status: DONE

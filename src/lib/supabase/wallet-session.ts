@@ -122,3 +122,13 @@ export async function getAuthenticatedWallet(): Promise<string | null> {
     return null;
   }
 }
+
+export async function clearWalletSession(): Promise<void> {
+  (await cookies()).set(SESSION_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 0,
+    path: "/",
+  });
+}

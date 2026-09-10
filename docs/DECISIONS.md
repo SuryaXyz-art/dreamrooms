@@ -130,3 +130,15 @@ Reason: finalized markets are not guaranteed to remain in the live-market feed. 
 Decision: the room centerpiece uses a client countdown, chain-derived order-book probabilities, and optional browser-native speech synthesis. Speech is never required for navigation or trading and no microphone, AI service, or protocol call is introduced.
 
 Reason: these additions improve evaluator comprehension on small screens while preserving the existing provider and wallet boundaries. Risk copy remains explicit: testnet, binary outcome, maximum stake loss and user custody.
+
+## ADR-0019 — Invalidate wallet sessions on account changes
+
+Decision: treat a change in the wagmi-connected address as a session boundary. Clear the
+client/server wallet session and require a fresh wallet-authentication signature before the
+next social mutation; server requests also clear a stale session when the wallet header differs.
+
+Reason: the authenticated wallet is stored in the signed HTTP-only `dreamrooms_session` cookie,
+while later browser mutations identify the active wallet through wagmi and the
+`x-dreamrooms-wallet` header. These values can diverge after an extension account switch or a
+persisted prior session. Both addresses are normalized before comparison, and no address is
+silently trusted when they differ.

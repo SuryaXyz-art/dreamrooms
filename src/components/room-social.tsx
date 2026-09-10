@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useSignMessage } from "wagmi";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,20 @@ export function RoomSocial({ slug }: { slug: string }) {
   const [isBusy, setIsBusy] = useState(false);
   const [joined, setJoined] = useState(false);
   const [activeReaction, setActiveReaction] = useState<string | null>(null);
+  const previousAddress = useRef<string | null>(null);
+
+  useEffect(() => {
+    const nextAddress = address?.toLowerCase() ?? null;
+    const changedAccount =
+      previousAddress.current !== null && previousAddress.current !== nextAddress;
+    previousAddress.current = nextAddress;
+    if (!changedAccount) return;
+    setAuthenticated(false);
+    setJoined(false);
+    setActiveReaction(null);
+    setMessage("Wallet account changed. Sign a fresh DreamRooms authentication message.");
+    void fetch("/api/auth/logout", { method: "POST", keepalive: true });
+  }, [address]);
 
   const load = useCallback(async () => {
     try {
@@ -157,7 +171,13 @@ export function RoomSocial({ slug }: { slug: string }) {
       setMessage("Room state updated.");
       await load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The room action failed.");
+      if (error instanceof Error && error.message.includes("Wallet account changed")) {
+        setAuthenticated(false);
+        setJoined(false);
+        setMessage("Wallet account changed. Sign a fresh DreamRooms authentication message.");
+      } else {
+        setMessage(error instanceof Error ? error.message : "The room action failed.");
+      }
     } finally {
       setIsBusy(false);
     }
